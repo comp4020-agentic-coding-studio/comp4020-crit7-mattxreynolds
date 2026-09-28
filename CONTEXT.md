@@ -88,7 +88,15 @@ Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
   The username is the name shown on what they create. Fixed by #5
   (`docs/decisions/0011`).
 - **Demo student**: a seeded student whose password is shared and published,
-  reachable from the login page in one click. Fixed by #5 (`0014`).
+  reachable from the login page in one click. Fixed by #5 (`0014`). There are
+  seven: alex, priya, sam, lena, jordan, mei and noah, with the password
+  `demo-student` (#12, `docs/decisions/0037`).
+- **Demo seed**: the demo students and the posts, offers, comments and private
+  messages written for them (`0038`). It is written only when no demo student
+  exists, never on every boot (`0040`).
+- **Seed reset**: `pnpm seed:reset`, run only by the operator. It deletes
+  everything involving a demo student (including a real student's post swapped
+  with one) and writes the demo seed again. Fixed by #12 (`0040`, `0041`).
 
 ## Harness
 
