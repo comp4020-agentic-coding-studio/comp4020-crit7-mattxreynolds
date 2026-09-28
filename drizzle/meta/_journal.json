@@ -8,6 +8,20 @@
       "when": 1784173013185,
       "tag": "0000_dry_captain_flint",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790636841215,
+      "tag": "0001_jazzy_thundra",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790636849084,
+      "tag": "0002_outgoing_boomer",
+      "breakpoints": true
     }
   ]
 }
