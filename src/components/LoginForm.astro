@@ -1,0 +1,20 @@
+---
+interface Props {
+  next: string;
+  error: string | null;
+}
+
+const { next, error } = Astro.props;
+---
+
+<h1>Log in</h1>
+{error && <p role="alert">{error}</p>}
+<form method="post" action="/api/login">
+  <input type="hidden" name="next" value={next} />
+  <label for="username">Username</label>
+  <input id="username" name="username" required autocomplete="username" />
+  <label for="password">Password</label>
+  <input id="password" name="password" type="password" required autocomplete="current-password" />
+  <button>Log in</button>
+</form>
+<p><a href={`/signup/?next=${encodeURIComponent(next)}`}>Sign up instead</a></p>

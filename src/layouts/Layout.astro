@@ -1,0 +1,36 @@
+---
+import "../styles.css";
+import type { Student } from "../lib/schema";
+
+interface Props {
+  title: string;
+  student: Student | null;
+}
+
+const { title, student } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      {student && <a href="/">Board</a>}
+      <a href="/readme/">About</a>
+      {
+        student && (
+          <form method="post" action="/logout">
+            <button>Log out</button>
+          </form>
+        )
+      }
+    </nav>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+---
+import LoginForm from "../components/LoginForm.astro";
+import Layout from "../layouts/Layout.astro";
+import { safeNextPath } from "../lib/auth";
+
+const next = safeNextPath(Astro.url.searchParams.get("next"));
+
+// already logged in: nothing to do here but go where they were headed
+if (Astro.locals.student) {
+  return Astro.redirect(next);
+}
+
+const error = Astro.url.searchParams.get("error");
+---
+
+<Layout title="Log in" student={null}>
+  <LoginForm next={next} error={error} />
+</Layout>

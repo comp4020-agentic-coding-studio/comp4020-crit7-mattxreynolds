@@ -1,5 +1,4 @@
 import type { APIRoute } from "astro";
-import type { Message } from "../../lib/db";
 import { bus } from "../../lib/events";
 
 // The minimal server-sent-events (SSE) pattern: a long-lived streaming
@@ -7,8 +6,13 @@ import { bus } from "../../lib/events";
 // SSE is one-directional (server → browser) and plain HTTP, which makes it
 // the simplest live channel that works everywhere — reach for WebSockets
 // only when the client needs to push over the same connection.
+//
+// Nothing broadcasts on the bus yet: the guestbook was the only publisher,
+// and it retired with the login slice (0021). The stream stays up — a later
+// slice's live updates (0042-0044) are the next publisher — so it still
+// answers with the same 200 and opening comment the deploy probe checks.
 export const GET: APIRoute = () => {
-  let onMessage: (message: Message) => void;
+  let onMessage: (message: unknown) => void;
   let heartbeat: ReturnType<typeof setInterval>;
 
   const stream = new ReadableStream<string>({

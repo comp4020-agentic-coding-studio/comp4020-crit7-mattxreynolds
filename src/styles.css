@@ -15,12 +15,32 @@ a {
   color: #0b5fff;
 }
 
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+nav form {
+  margin: 0;
+}
+
 form {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
   margin-block: 1.5rem;
+}
+
+form label {
+  width: 100%;
+}
+
+[role="alert"] {
+  color: #b00020;
+  font-weight: 600;
 }
 
 input {
