@@ -1,27 +1,15 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { randomBytes } from "node:crypto";
+import type { AstroCookies } from "astro";
 import { eq, sql } from "drizzle-orm";
 import { db } from "./db";
+import { hashPassword, verifyPassword } from "./password";
 import { type Student, sessions, students } from "./schema";
+import { DEMO_USERNAMES } from "./seed";
 
 export const SESSION_COOKIE = "session";
 export const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_-]{3,20}$/;
-const SCRYPT_KEY_LENGTH = 64;
-
-function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, SCRYPT_KEY_LENGTH).toString("hex");
-  return `${salt}:${hash}`;
-}
-
-function verifyPassword(password: string, stored: string): boolean {
-  const [salt, hash] = stored.split(":");
-  if (!salt || !hash) return false;
-  const expected = Buffer.from(hash, "hex");
-  const actual = scryptSync(password, salt, expected.length);
-  return expected.length === actual.length && timingSafeEqual(expected, actual);
-}
 
 function findByUsername(username: string): Student | undefined {
   return db
@@ -74,6 +62,21 @@ export function logIn(username: string, password: string): Student | null {
   return student;
 }
 
+// One-click demo login (0014): the demo password is published, so typing it
+// proves nothing; the button names a demo student directly. Only an exact
+// demo username (or "random") ever resolves, so this can't be used to log in
+// as any other student.
+export const RANDOM_DEMO = "random";
+
+export function demoStudent(choice: string): Student | null {
+  const username =
+    choice === RANDOM_DEMO
+      ? DEMO_USERNAMES[Math.floor(Math.random() * DEMO_USERNAMES.length)]
+      : DEMO_USERNAMES.find((name) => name === choice);
+  if (!username) return null;
+  return db.select().from(students).where(eq(students.username, username)).get() ?? null;
+}
+
 export function createSession(studentId: number): { token: string; expiresAt: Date } {
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
@@ -122,4 +125,15 @@ export function safeNextPath(raw: string | null | undefined): string {
 // comes from the header Fly sets instead.
 export function isSecureRequest(request: Request): boolean {
   return request.headers.get("x-forwarded-proto") === "https" || new URL(request.url).protocol === "https:";
+}
+
+export function startSession(cookies: AstroCookies, request: Request, studentId: number): void {
+  const { token } = createSession(studentId);
+  cookies.set(SESSION_COOKIE, token, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isSecureRequest(request),
+    maxAge: SESSION_DURATION_MS / 1000,
+  });
 }

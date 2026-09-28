@@ -8,8 +8,8 @@ student who's happy to swap says so, and the poster accepts or declines. It
 makes swapping visible, discussable and agreed by both students — it cannot
 change a real ANU allocation, and nothing here is official.
 
-This slice ships the login: everyone else — the board, offers, comments,
-private messages — arrives in the slices after it.
+The login and its demo students are built: everyone else — the board,
+offers, comments, private messages — arrives in the slices after it.
 
 ## What good looks like here
 
@@ -34,6 +34,14 @@ survives a redeploy, with a visible "Log out" on every logged-in page.
 can sign up or use a demo student, so treat what you post as visible to
 strangers. Demo students are shared, so their messages aren't private. There
 is no rate limiting, password reset or account deletion.
+
+**Seven demo students, one shared password.** The login page has a
+one-click button for each of `alex`, `priya`, `sam`, `lena`, `jordan`, `mei`
+and `noah`, plus "Random demo student". They share the password
+`demo-student`, published here, for anyone who would rather type it in the
+ordinary form. Their names are taken: signing up as one fails like any other
+duplicate. The demo students are written once, when the database has none;
+a server restart never rewrites them.
 
 **Real names and uni IDs are allowed**, since the demo-login notice above
 already tells a student who can read what they post.

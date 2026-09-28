@@ -1,12 +1,5 @@
 import type { APIRoute } from "astro";
-import {
-  createSession,
-  isSecureRequest,
-  safeNextPath,
-  SESSION_COOKIE,
-  SESSION_DURATION_MS,
-  signUp,
-} from "../../lib/auth";
+import { safeNextPath, signUp, startSession } from "../../lib/auth";
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const form = await request.formData();
@@ -20,13 +13,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect(`/signup/?${params}`, 303);
   }
 
-  const { token } = createSession(result.student.id);
-  cookies.set(SESSION_COOKIE, token, {
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isSecureRequest(request),
-    maxAge: SESSION_DURATION_MS / 1000,
-  });
+  startSession(cookies, request, result.student.id);
   return redirect(next, 303);
 };

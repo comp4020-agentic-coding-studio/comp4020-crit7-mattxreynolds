@@ -14,6 +14,7 @@ const PUBLIC_PATHS = new Set([
   "/login/",
   "/signup/",
   "/api/login",
+  "/login/demo",
   "/api/signup",
   "/api/events",
 ]);

@@ -1,18 +1,14 @@
 import type { APIRoute } from "astro";
-import { logIn, safeNextPath, startSession } from "../../lib/auth";
+import { demoStudent, safeNextPath, startSession } from "../../lib/auth";
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const form = await request.formData();
-  const username = String(form.get("username") ?? "");
-  const password = String(form.get("password") ?? "");
+  const choice = String(form.get("username") ?? "");
   const next = safeNextPath(String(form.get("next") ?? ""));
 
-  const student = logIn(username, password);
+  const student = demoStudent(choice);
   if (!student) {
-    const params = new URLSearchParams({
-      next,
-      error: "Incorrect username or password.",
-    });
+    const params = new URLSearchParams({ next, error: "That is not a demo student." });
     return redirect(`/login/?${params}`, 303);
   }
 

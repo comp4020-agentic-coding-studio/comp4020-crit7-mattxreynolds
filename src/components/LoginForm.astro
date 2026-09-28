@@ -1,10 +1,14 @@
 ---
+import { RANDOM_DEMO } from "../lib/auth";
+import { DEMO_USERNAMES } from "../lib/seed";
+
 interface Props {
   next: string;
   error: string | null;
 }
 
 const { next, error } = Astro.props;
+const demoChoices = [...DEMO_USERNAMES, RANDOM_DEMO];
 ---
 
 <h1>Log in</h1>
@@ -18,3 +22,19 @@ const { next, error } = Astro.props;
   <button>Log in</button>
 </form>
 <p><a href={`/signup/?next=${encodeURIComponent(next)}`}>Sign up instead</a></p>
+
+<h2>Demo students</h2>
+<p>One click, no typing. Demo students are shared: anyone can be one.</p>
+<ul class="demo-students">
+  {
+    demoChoices.map((choice) => (
+      <li>
+        <form method="post" action="/login/demo">
+          <input type="hidden" name="next" value={next} />
+          <input type="hidden" name="username" value={choice} />
+          <button>{choice === RANDOM_DEMO ? "Random demo student" : choice}</button>
+        </form>
+      </li>
+    ))
+  }
+</ul>
