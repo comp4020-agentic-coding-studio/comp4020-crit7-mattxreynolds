@@ -4,7 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "./db";
 import { hashPassword, verifyPassword } from "./password";
 import { type Student, sessions, students } from "./schema";
-import { DEMO_USERNAMES } from "./seed";
+import { DEMO_PASSWORD, DEMO_USERNAMES } from "./seed";
 
 export const SESSION_COOKIE = "session";
 export const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -65,7 +65,9 @@ export function logIn(username: string, password: string): Student | null {
 // One-click demo login (0014): the demo password is published, so typing it
 // proves nothing; the button names a demo student directly. Only an exact
 // demo username (or "random") ever resolves, so this can't be used to log in
-// as any other student.
+// as any other student: the row must also still hold the demo password, so a
+// real student who happens to hold a demo name is never logged into without
+// their password.
 export const RANDOM_DEMO = "random";
 
 export function demoStudent(choice: string): Student | null {
@@ -74,7 +76,8 @@ export function demoStudent(choice: string): Student | null {
       ? DEMO_USERNAMES[Math.floor(Math.random() * DEMO_USERNAMES.length)]
       : DEMO_USERNAMES.find((name) => name === choice);
   if (!username) return null;
-  return db.select().from(students).where(eq(students.username, username)).get() ?? null;
+  const student = db.select().from(students).where(eq(students.username, username)).get();
+  return student && verifyPassword(DEMO_PASSWORD, student.passwordHash) ? student : null;
 }
 
 export function createSession(studentId: number): { token: string; expiresAt: Date } {

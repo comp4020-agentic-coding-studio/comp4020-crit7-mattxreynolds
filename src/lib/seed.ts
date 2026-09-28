@@ -23,7 +23,12 @@ export function seedDemoStudents(db: BetterSQLite3Database): void {
 
   db.transaction((tx) => {
     for (const username of DEMO_USERNAMES) {
-      tx.insert(students).values({ username, passwordHash: hashPassword(DEMO_PASSWORD) }).run();
+      // a clash with an existing student (usernames are unique ignoring case)
+      // leaves that student alone rather than stopping the server booting
+      tx.insert(students)
+        .values({ username, passwordHash: hashPassword(DEMO_PASSWORD) })
+        .onConflictDoNothing()
+        .run();
     }
   });
 }

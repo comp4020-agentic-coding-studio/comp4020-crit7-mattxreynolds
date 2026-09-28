@@ -4,6 +4,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import { JSDOM } from "jsdom";
 import { describe, expect, inject, it } from "vitest";
+import { hashPassword } from "../src/lib/password";
 import { spawnServer } from "./spawn-server";
 
 // The demo seed and one-click demo login (issue #17, decisions 0014, 0037,
@@ -58,14 +59,14 @@ describe("the demo seed", () => {
         expect(sessionCookieFrom(res), username).toBeTruthy();
       }
     } finally {
-      server.stop();
+      await server.stop();
     }
   }, 30_000);
 
   it("is not rewritten when demo students already exist: what was changed survives a restart", async () => {
     const dbPath = join(mkdtempSync(join(tmpdir(), "demo-seed-restart-")), "test.db");
     const first = await spawnServer(dbPath);
-    first.stop();
+    await first.stop();
 
     // No HTTP action changes a demo student yet, so make the changes
     // directly: alex's stored password, and mei removed altogether. A boot
@@ -76,7 +77,7 @@ describe("the demo seed", () => {
     db.close();
 
     const second = await spawnServer(dbPath);
-    second.stop();
+    await second.stop();
 
     const after = new Database(dbPath, { readonly: true });
     const alex = after.prepare("select password_hash from students where username = 'alex'").get() as {
@@ -88,6 +89,49 @@ describe("the demo seed", () => {
     expect(alex.password_hash).toBe("changed:by-the-test");
     expect(mei.n).toBe(0);
     expect(total.n).toBe(6);
+  }, 60_000);
+});
+
+describe("a real student holding a demo name", () => {
+  it("still boots when the name differs from a demo name only by case, and leaves that student alone", async () => {
+    const dbPath = join(mkdtempSync(join(tmpdir(), "demo-seed-clash-")), "test.db");
+    const first = await spawnServer(dbPath);
+    await first.stop();
+    const realHash = hashPassword("real-password-1");
+    const db = new Database(dbPath);
+    db.prepare("delete from students").run();
+    db.prepare("insert into students (username, password_hash) values ('Alex', ?)").run(realHash);
+    db.close();
+
+    const second = await spawnServer(dbPath);
+    try {
+      const res = await postForm(second.baseUrl, "/login/demo", { username: "alex", next: "/" });
+      expect(sessionCookieFrom(res)).toBeNull();
+    } finally {
+      await second.stop();
+    }
+    const after = new Database(dbPath, { readonly: true });
+    const alex = after.prepare("select username, password_hash from students where lower(username) = 'alex'").all();
+    after.close();
+    expect(alex).toEqual([{ username: "Alex", password_hash: realHash }]);
+  }, 60_000);
+
+  it("is never logged into by the one-click button without its password", async () => {
+    const dbPath = join(mkdtempSync(join(tmpdir(), "demo-seed-real-")), "test.db");
+    const first = await spawnServer(dbPath);
+    await first.stop();
+    const db = new Database(dbPath);
+    db.prepare("update students set password_hash = ? where username = 'priya'").run(hashPassword("real-password-1"));
+    db.close();
+
+    const second = await spawnServer(dbPath);
+    try {
+      const res = await postForm(second.baseUrl, "/login/demo", { username: "priya", next: "/" });
+      expect(sessionCookieFrom(res)).toBeNull();
+      expect(res.headers.get("location")).toContain("/login/");
+    } finally {
+      await second.stop();
+    }
   }, 60_000);
 });
 
@@ -166,6 +210,6 @@ describe("demo names are taken", () => {
 
 describe("the README", () => {
   it("publishes the demo password", () => {
-    expect(readFileSync("README.md", "utf8")).toContain(DEMO_PASSWORD);
+    expect(readFileSync("README.md", "utf8")).toMatch(new RegExp(`password\\s+\`${DEMO_PASSWORD}\``));
   });
 });

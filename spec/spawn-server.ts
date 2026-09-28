@@ -6,7 +6,7 @@ import { type AddressInfo, createServer } from "node:net";
  *  example, proving a session survives an actual process restart on the same
  *  database — rather than the one shared server spec/global-setup.ts boots
  *  for every other spec test. */
-export async function spawnServer(databasePath: string): Promise<{ baseUrl: string; stop: () => void }> {
+export async function spawnServer(databasePath: string): Promise<{ baseUrl: string; stop: () => Promise<void> }> {
   const port = await new Promise<number>((resolve) => {
     const probe = createServer();
     probe.listen(0, () => {
@@ -40,5 +40,14 @@ export async function spawnServer(databasePath: string): Promise<{ baseUrl: stri
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
-  return { baseUrl, stop: () => server.kill() };
+  // resolves once the process has exited, so a test can touch the database
+  // file knowing nothing else holds it
+  const exited = new Promise<void>((resolve) => server.once("exit", () => resolve()));
+  return {
+    baseUrl,
+    stop: () => {
+      server.kill();
+      return exited;
+    },
+  };
 }
