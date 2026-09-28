@@ -37,13 +37,13 @@ whole of `README.md`, your account of what the app is and what good looks like
 here. It renders the markdown to text and asks whether the served page contains
 all of it, so styling and navigation around it pass and a trimmed copy fails.
 
-## The starter's plumbing (shipped, retires with the starter)
+## The starter's plumbing (retired)
 
-`guestbook.test.ts` drives the running app over HTTP to prove the supplied
-plumbing works in this repo: a message survives a reload, and a new one reaches
-other clients over the SSE stream. A red run on a fresh clone means the platform
-is broken, not your work. It describes the starter, so it goes when the starter
-does.
+`guestbook.test.ts` and `e2e/guestbook.spec.ts` drove the starter's guestbook
+over HTTP and a browser, to prove the supplied plumbing worked in this repo. They
+retired in the login slice (`docs/decisions/0021`), once the guestbook page and
+`/api/messages` went and everything moved behind the login: your own spec and
+e2e tests are what covers the app now.
 
 ## Your spec tests (yours to write)
 
