@@ -103,9 +103,23 @@ export function deleteSession(token: string): void {
 }
 
 // Only a same-app path is ever a valid redirect target: no scheme, no
-// authority, no leading "//", no whitespace or control characters.
+// authority, no whitespace or control characters. A backslash is refused
+// outright, not just a leading "//" — the WHATWG URL parser treats a
+// leading "/\" the same as "//" (special-scheme authority parsing treats "/"
+// and "\" interchangeably), so "/\evil.example.com" would otherwise resolve
+// to an off-site host despite passing a "//"-only check.
 const SAFE_NEXT_PATH = /^\/(?!\/)[!-~]*$/;
 
 export function safeNextPath(raw: string | null | undefined): string {
-  return raw && SAFE_NEXT_PATH.test(raw) ? raw : "/";
+  if (!raw || raw.includes("\\") || !SAFE_NEXT_PATH.test(raw)) return "/";
+  return raw;
+}
+
+// Fly terminates TLS at its edge and forwards to the app over plain HTTP
+// (fly.toml: force_https, internal_port) — the Node adapter's own protocol
+// detection (req.socket.encrypted, which is what Astro.url.protocol relies
+// on) is therefore always "http:" in production. The client's real scheme
+// comes from the header Fly sets instead.
+export function isSecureRequest(request: Request): boolean {
+  return request.headers.get("x-forwarded-proto") === "https" || new URL(request.url).protocol === "https:";
 }

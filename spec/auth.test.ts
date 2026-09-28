@@ -213,7 +213,14 @@ describe("the login gate", () => {
 
 describe("the next-page target", () => {
   it("only ever points inside the app: an off-site next is dropped, not followed", async () => {
-    for (const evil of ["https://evil.example.com", "//evil.example.com"]) {
+    for (const evil of [
+      "https://evil.example.com",
+      "//evil.example.com",
+      // a leading "/\" is what "//" is to a URL parser (special-scheme
+      // authority parsing treats "/" and "\" interchangeably), so this must
+      // be refused too, not just a literal "//".
+      "/\\evil.example.com",
+    ]) {
       const res = await fetch(new URL(`/login/?next=${encodeURIComponent(evil)}`, baseUrl));
       expect(await res.text()).toContain('value="/"');
     }
