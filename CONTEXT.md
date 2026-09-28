@@ -73,6 +73,16 @@ Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
   Only its author can delete it, which leaves a "Comment deleted"
   placeholder. A withdrawn or swapped post's comments are read-only. Fixed by
   #10 (`docs/decisions/0026`, `0027`).
+- **Private message**: a plain-text note (≤500 chars) from one student to
+  another. Only those two can read it, and it can't be edited or deleted.
+  It's unread until its recipient opens the conversation. Always said in
+  full, in code too: bare "message" means a swap post's message. Fixed by
+  #11 (`docs/decisions/0030`, `0032`, `0033`).
+- **Conversation**: every private message between one pair of students,
+  oldest first, at `/messages/<username>/` (always "me and that student").
+  There is one per pair, not tied to any post. Fixed by #11 (`0031`).
+- **Inbox**: `/messages/`, the student's conversations, most recent first,
+  with unread ones in bold. Fixed by #11 (`0033`).
 - **Student**: an account in this app: a username and a password (hash).
   The username is the name shown on what they create. Fixed by #5
   (`docs/decisions/0011`).
