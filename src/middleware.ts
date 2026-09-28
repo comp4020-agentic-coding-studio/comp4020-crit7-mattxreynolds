@@ -7,7 +7,16 @@ import { getStudentForToken, safeNextPath, SESSION_COOKIE } from "./lib/auth";
 // deploy probe and the link check both fetch "/" without following redirects
 // (0048) — src/pages/index.astro renders the login form when there's no
 // student. Every other protected path redirects to /login/?next=….
-const PUBLIC_PATHS = new Set(["/readme/", "/login/", "/signup/", "/api/login", "/api/signup"]);
+// /api/events is public too: it's plumbing, not a student-facing page, and
+// the deploy probe and CI's link check both fetch it without logging in.
+const PUBLIC_PATHS = new Set([
+  "/readme/",
+  "/login/",
+  "/signup/",
+  "/api/login",
+  "/api/signup",
+  "/api/events",
+]);
 
 export const onRequest = defineMiddleware((context, next) => {
   const token = context.cookies.get(SESSION_COOKIE)?.value;

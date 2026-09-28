@@ -209,6 +209,13 @@ describe("the login gate", () => {
       expect(res.status, path).toBe(200);
     }
   });
+
+  it("still streams /api/events logged out (0021: the SSE plumbing stays, and the deploy probe fetches it unauthenticated)", async () => {
+    const res = await fetch(new URL("/api/events", baseUrl));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/event-stream");
+    await res.body?.cancel();
+  });
 });
 
 describe("the next-page target", () => {
