@@ -34,7 +34,10 @@ export function signUp(username: string, password: string): SignUpResult {
   if (password.length < 8) {
     return { ok: false, error: "Password must be at least 8 characters." };
   }
-  if (findByUsername(username)) {
+  // demo names are taken whether or not their rows are present (0037), so a
+  // partly present seed can't let a real student register one
+  const isDemoName = DEMO_USERNAMES.some((name) => name === username.toLowerCase());
+  if (isDemoName || findByUsername(username)) {
     return { ok: false, error: "That username is taken." };
   }
   try {

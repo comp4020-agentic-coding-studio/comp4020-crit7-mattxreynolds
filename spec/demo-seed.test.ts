@@ -208,6 +208,37 @@ describe("demo names are taken", () => {
   });
 });
 
+describe("demo names are reserved", () => {
+  it("refuses every demo name as taken, in any case, even when its row is missing", async () => {
+    const dbPath = join(mkdtempSync(join(tmpdir(), "demo-seed-reserved-")), "test.db");
+    const first = await spawnServer(dbPath);
+    await first.stop();
+    const db = new Database(dbPath);
+    // a partial seed is left alone on boot (0040), so mei and noah are free
+    // rows-wise; the rule, not the seed, has to keep the names taken
+    db.prepare("delete from students where username in ('mei', 'noah')").run();
+    db.close();
+
+    const second = await spawnServer(dbPath);
+    try {
+      for (const name of DEMO_USERNAMES) {
+        for (const attempt of [name, name.toUpperCase()]) {
+          const res = await postForm(second.baseUrl, "/api/signup", {
+            username: attempt,
+            password: "longenough1",
+            next: "/",
+          });
+          expect(sessionCookieFrom(res), attempt).toBeNull();
+          const error = new URL(res.headers.get("location") ?? "", second.baseUrl).searchParams.get("error");
+          expect(error, attempt).toBe("That username is taken.");
+        }
+      }
+    } finally {
+      await second.stop();
+    }
+  }, 60_000);
+});
+
 describe("the README", () => {
   it("publishes the demo password", () => {
     expect(readFileSync("README.md", "utf8")).toMatch(new RegExp(`password\\s+\`${DEMO_PASSWORD}\``));
