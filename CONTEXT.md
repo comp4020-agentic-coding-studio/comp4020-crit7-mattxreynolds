@@ -68,6 +68,11 @@ Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
   ended by the app (post withdrawn, post swapped with someone else, or the
   offerer swapped elsewhere), with the reason stored. Only pending offers
   count or lock editing. Fixed by #9 (`0025`).
+- **Comment**: a plain-text note (≤500 chars) by a logged-in student on a
+  swap post's page, in one flat thread, oldest first. It can't be edited.
+  Only its author can delete it, which leaves a "Comment deleted"
+  placeholder. A withdrawn or swapped post's comments are read-only. Fixed by
+  #10 (`docs/decisions/0026`, `0027`).
 - **Student**: an account in this app: a username and a password (hash).
   The username is the name shown on what they create. Fixed by #5
   (`docs/decisions/0011`).
