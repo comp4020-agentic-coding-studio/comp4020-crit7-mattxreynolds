@@ -14,7 +14,8 @@
     "probe": "scripts/probe.sh",
     "test": "astro build && vitest run",
     "e2e": "astro build && playwright test",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "db:check": "scripts/db-check.sh"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "7.3.1",
