@@ -39,7 +39,10 @@ describe("guard.mjs blocks with exit 2", () => {
 
   it.each([
     "gh issue close 3",
+    "cd /tmp && gh issue close 3 --comment done",
+    "x=$(gh issue close 3)",
     "gh api repos/o/r/issues/3 -X PATCH -f state=closed",
+    "git config --unset core.hooksPath",
     "git commit --amend --no-edit",
     "git rebase -i HEAD~3",
     "git push --force origin main",
@@ -86,6 +89,10 @@ describe("guard.mjs allows ordinary work with exit 0", () => {
     "git push origin main",
     "gh issue comment 1 --body-file .scratch/evidence.md",
     "gh issue edit 1 --add-label ready-for-human",
+    "git config core.hooksPath",
+    // prose that mentions a blocked command is not a command
+    "cat > notes.md <<'EOF'\nClaude never runs `gh issue close` or git rebase.\nEOF",
+    `echo '{"tool_input":{"command":"gh issue close 1"}}' | node .claude/hooks/guard.mjs`,
   ])("Bash: %s", (command) => {
     expect(guard("Bash", { command })).toBe(0);
   });

@@ -90,20 +90,25 @@ function checkFile(rel) {
 
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// A command in command position: at a line start or after ; & | ( or $(, so
+// prose that merely mentions it (an issue body in a heredoc, a quoted string)
+// does not trip the guard.
+const run = (re) => new RegExp(String.raw`(?:^|[;&|(]|\$\()\s*` + re, "m");
+
 function checkBash(cmd) {
-  if (/\bgh\s+issue\s+close\b/.test(cmd) || (/\bgh\s+api\b/.test(cmd) && /state["']?\s*[=:]\s*["']?closed/.test(cmd))) {
+  if (run(String.raw`gh\s+issue\s+close\b`).test(cmd) || run(String.raw`gh\s+api\b[^|;&\n]*state["']?\s*[=:]\s*["']?closed`).test(cmd)) {
     block("only Matt closes issues. Post the evidence, label the issue ready-for-human, and hand off.");
   }
-  if (/\bgit\s+(commit\b[^|;&]*--amend|rebase\b|filter-branch\b|filter-repo\b)/.test(cmd)) {
+  if (run(String.raw`git\s+(commit\b[^|;&\n]*--amend|rebase\b|filter-branch\b|filter-repo\b)`).test(cmd)) {
     block("history is never rewritten. Make a new commit instead.");
   }
-  if (/\bgit\s+push\b[^|;&]*(\s-f\b|--force|\s\+\S)/.test(cmd)) {
+  if (run(String.raw`git\s+push\b[^|;&\n]*(\s-f\b|--force|\s\+\S)`).test(cmd)) {
     block("force-pushing rewrites published history.");
   }
-  if (/\bgit\s+reset\b[^|;&]*(--hard|--soft|--keep|--merge|HEAD[~^]|@[~^])/.test(cmd)) {
+  if (run(String.raw`git\s+reset\b[^|;&\n]*(--hard|--soft|--keep|--merge|HEAD[~^]|@[~^])`).test(cmd)) {
     block("resetting commits rewrites history or discards work. Use `git restore <path>` to undo uncommitted changes, or make a new commit.");
   }
-  if (/\bgit\b[^|;&]*--no-verify\b/.test(cmd) || /\bcore\.hooksPath\b/.test(cmd)) {
+  if (run(String.raw`git\b[^|;&\n]*--no-verify\b`).test(cmd) || run(String.raw`git\s+config\b[^|;&\n]*(--unset[^|;&\n]*core\.hooksPath|core\.hooksPath\s+[^\s|;&])`).test(cmd)) {
     block("the git hooks (key guard, commit-message guard) are not bypassed.");
   }
 
