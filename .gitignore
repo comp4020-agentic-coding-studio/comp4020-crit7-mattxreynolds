@@ -20,7 +20,21 @@ Desktop.ini
 mise.local.toml
 *.pem
 
-# Claude Code's project directory is machine-local: settings in here can hold
-# your course API key, and this repo goes public when you ship. Your tracked
-# harness is CLAUDE.md (and any AGENTS.md), not this directory.
-.claude/
+# Claude Code's project directory is machine-local by default: settings in
+# here can hold your course API key, and this repo goes public when you ship.
+# Only the reviewed, keyless harness files are tracked; everything else in it,
+# settings.local.json included, stays ignored.
+.claude/*
+!.claude/settings.json
+!.claude/skills/
+!.claude/agents/
+!.claude/hooks/
+
+# disposable session memory (handoffs, review bundles, scratch screenshots);
+# the durable record is GitHub Issues
+.scratch/
+
+# Playwright output: screenshots are attached to issues, never committed
+test-results/
+playwright-report/
+blob-report/
