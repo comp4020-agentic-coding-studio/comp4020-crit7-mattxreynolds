@@ -28,12 +28,12 @@ Checked 2026-09-23 against ANU's timetabling pages; sources in
 From the brainstorm's recommended slice. Each needs Matt's decision before it
 is used in code; `/grill` moves a term up to the section below when it is.
 
-- acceptable (target) activity, match, cycle, identity (who is posting),
-  status of a post or offer. ("Swap offer" was replaced by *swap post* and *offer*, below.)
+- acceptable (target) activity, match, cycle, status of a post or offer.
+  ("Identity" was replaced by *student*, below.) ("Swap offer" was replaced by *swap post* and *offer*, below.)
 
 ## The app: decided terms
 
-Fixed by #3 (`docs/decisions/0007`, `0008`).
+Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
 
 - **Class**: in this app, one COMP4020 crit-group session (day, start, end,
   room, tutor). The app's instance of an *activity*.
@@ -42,6 +42,11 @@ Fixed by #3 (`docs/decisions/0007`, `0008`).
 - **Offer**: another student saying "happy to swap" on a swap post. Never
   used for the post itself.
 - **Accept / decline**: the poster's answer to an offer.
+- **Student**: an account in this app: a username and a password (hash).
+  The username is the name shown on what they create. Fixed by #5
+  (`docs/decisions/0011`).
+- **Demo student**: a seeded student whose password is shared and published,
+  reachable from the login page in one click. Fixed by #5 (`0014`).
 
 ## Harness
 
