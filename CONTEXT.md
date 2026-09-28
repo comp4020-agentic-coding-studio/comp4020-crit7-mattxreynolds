@@ -48,6 +48,12 @@ Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
 - **Open / withdrawn** (swap post): an open post is on the board; a withdrawn
   one was taken down by its poster. Further statuses come from #9. Fixed by
   #6 (`0018`).
+- **Board**: the page at `/` listing every open swap post, newest first,
+  with the student's own post pinned under "Your post" and the offers
+  they've made under "Your offers". Fixed by #8 (`docs/decisions/0019`).
+- **Post page**: one swap post's own page, `/posts/<id>/`, where its poster
+  sees offers. It still loads after the post is withdrawn. Fixed by #8
+  (`0020`).
 - **Offer**: another student saying "happy to swap" on a swap post. Never
   used for the post itself.
 - **Accept / decline**: the poster's answer to an offer.
