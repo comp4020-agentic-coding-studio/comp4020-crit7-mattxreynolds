@@ -22,3 +22,24 @@ test("sign up, reach the board, and log out", async ({ page }, testInfo) => {
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("heading", { name: "Log in" })).toBeVisible();
 });
+
+// Issue #17: the login page with its demo buttons (the screenshots Matt
+// judges at both viewports), then one click as a named student and one as
+// the random button, with nothing typed.
+test("log in with one click as a demo student", async ({ page }, testInfo) => {
+  await page.goto("/login/");
+  for (const name of ["alex", "priya", "sam", "lena", "jordan", "mei", "noah", "Random demo student"]) {
+    await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+  }
+  await page.screenshot({ path: screenshotPath(testInfo, "login"), fullPage: true });
+
+  await page.getByRole("button", { name: "priya", exact: true }).click();
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { name: "Board" })).toBeVisible();
+  await expect(page.getByRole("main").getByText("priya")).toBeVisible();
+
+  await page.getByRole("button", { name: "Log out" }).click();
+  await page.getByRole("button", { name: "Random demo student" }).click();
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { name: "Board" })).toBeVisible();
+});
