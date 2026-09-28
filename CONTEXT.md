@@ -28,7 +28,8 @@ Checked 2026-09-23 against ANU's timetabling pages; sources in
 From the brainstorm's recommended slice. Each needs Matt's decision before it
 is used in code; `/grill` moves a term up to the section below when it is.
 
-- match, cycle. ("Status of an offer" was fixed by #9, below.) ("Acceptable (target) activity" was
+- (none left.) ("Match" and "cycle" were dropped by #7: C7 has no automatic
+  matching, `docs/decisions/0036`.) ("Status of an offer" was fixed by #9, below.) ("Acceptable (target) activity" was
   replaced by *join classes*, below.)
   ("Identity" was replaced by *student*, below.) ("Swap offer" was replaced by *swap post* and *offer*, below.)
 
