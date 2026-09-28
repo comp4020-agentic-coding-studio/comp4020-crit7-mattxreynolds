@@ -28,7 +28,7 @@ Checked 2026-09-23 against ANU's timetabling pages; sources in
 From the brainstorm's recommended slice. Each needs Matt's decision before it
 is used in code; `/grill` moves a term up to the section below when it is.
 
-- match, cycle, status of an offer. ("Acceptable (target) activity" was
+- match, cycle. ("Status of an offer" was fixed by #9, below.) ("Acceptable (target) activity" was
   replaced by *join classes*, below.)
   ("Identity" was replaced by *student*, below.) ("Swap offer" was replaced by *swap post* and *offer*, below.)
 
@@ -45,18 +45,29 @@ Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
   #6 (`docs/decisions/0016`).
 - **Join classes**: the one or more other classes a swap post says its student
   would join. Never includes the leaving class. Fixed by #6 (`0016`, `0017`).
-- **Open / withdrawn** (swap post): an open post is on the board; a withdrawn
-  one was taken down by its poster. Further statuses come from #9. Fixed by
-  #6 (`0018`).
+- **Open / withdrawn / swapped** (swap post): an open post is on the board;
+  a withdrawn one was taken down by its poster, or automatically when its
+  poster swapped elsewhere; a swapped one had an offer accepted. Only open
+  posts are on the board. Fixed by #6 (`0018`) and #9 (`0024`).
 - **Board**: the page at `/` listing every open swap post, newest first,
   with the student's own post pinned under "Your post" and the offers
   they've made under "Your offers". Fixed by #8 (`docs/decisions/0019`).
 - **Post page**: one swap post's own page, `/posts/<id>/`, where its poster
   sees offers. It still loads after the post is withdrawn. Fixed by #8
   (`0020`).
-- **Offer**: another student saying "happy to swap" on a swap post. Never
-  used for the post itself.
-- **Accept / decline**: the poster's answer to an offer.
+- **Offer**: another student saying "happy to swap" on a swap post, naming
+  its offered class. Never used for the post itself. Fixed by #9
+  (`docs/decisions/0022`).
+- **Offered class**: the one join class of a post that an offerer says they
+  hold and would leave. Trusted, like the leaving class. Fixed by #9
+  (`0022`).
+- **Accept / decline**: the poster's answer to an offer. Accepting is final
+  and makes the post swapped (`0024`).
+- **Pending / accepted / declined / withdrawn / closed** (offer): waiting;
+  accepted by the poster; declined by the poster; taken back by the offerer;
+  ended by the app (post withdrawn, post swapped with someone else, or the
+  offerer swapped elsewhere), with the reason stored. Only pending offers
+  count or lock editing. Fixed by #9 (`0025`).
 - **Student**: an account in this app: a username and a password (hash).
   The username is the name shown on what they create. Fixed by #5
   (`docs/decisions/0011`).
