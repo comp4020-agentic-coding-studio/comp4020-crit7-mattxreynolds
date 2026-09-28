@@ -28,7 +28,8 @@ Checked 2026-09-23 against ANU's timetabling pages; sources in
 From the brainstorm's recommended slice. Each needs Matt's decision before it
 is used in code; `/grill` moves a term up to the section below when it is.
 
-- acceptable (target) activity, match, cycle, status of a post or offer.
+- match, cycle, status of an offer. ("Acceptable (target) activity" was
+  replaced by *join classes*, below.)
   ("Identity" was replaced by *student*, below.) ("Swap offer" was replaced by *swap post* and *offer*, below.)
 
 ## The app: decided terms
@@ -37,8 +38,16 @@ Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
 
 - **Class**: in this app, one COMP4020 crit-group session (day, start, end,
   room, tutor). The app's instance of an *activity*.
-- **Swap post**: what a student creates: the class they are leaving, the
-  classes they would join, and an optional message.
+- **Swap post**: what a student creates: its leaving class, its join
+  classes, an optional message, and when it was posted (`0016`).
+- **Leaving class**: the one class a swap post says its student is leaving.
+  Picked on each post; the app never stores a student's allocation. Fixed by
+  #6 (`docs/decisions/0016`).
+- **Join classes**: the one or more other classes a swap post says its student
+  would join. Never includes the leaving class. Fixed by #6 (`0016`, `0017`).
+- **Open / withdrawn** (swap post): an open post is on the board; a withdrawn
+  one was taken down by its poster. Further statuses come from #9. Fixed by
+  #6 (`0018`).
 - **Offer**: another student saying "happy to swap" on a swap post. Never
   used for the post itself.
 - **Accept / decline**: the poster's answer to an offer.
