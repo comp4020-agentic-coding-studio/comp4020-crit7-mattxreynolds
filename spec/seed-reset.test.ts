@@ -125,6 +125,10 @@ function mess(raw: Raw) {
   message(raw, ria, bo, "real private message");
   const cyPost = post(raw, cy, WED_14, [WED_1530], "swapped");
   const deeOnCy = offer(raw, cyPost, dee, WED_1530, "accepted");
+  // noah's offer on that swap was closed when it was accepted (0024): it goes,
+  // the swap does not, because only an accepted demo offer takes a post along
+  const closedDemoOffer = offer(raw, cyPost, noah, WED_1530, "closed");
+  raw.prepare("update offers set closed_reason = 'post-swapped' where id = ?").run(closedDemoOffer);
 
   // rows that involve a demo student and so go: noah's offer and comment on
   // ria's post, a message to ria, ria's offer and comment on alex's post, a
@@ -146,7 +150,7 @@ function mess(raw: Raw) {
   raw.prepare("update offers set status = 'closed', closed_reason = 'post-withdrawn' where post_id = ?").run(alexPost);
   raw.prepare("delete from private_messages where body like 'Hi Alex%'").run();
   post(raw, noah, WED_1030, [MON_14]);
-  return { riaPost, boOnRia, cyPost, deeOnCy, boPost };
+  return { riaPost, boOnRia, cyPost, deeOnCy, boPost, closedDemoOffer };
 }
 
 // the rows that involve only real students, as they stand: the two real posts
@@ -191,6 +195,7 @@ describe("resetDemo", () => {
     expect(raw.prepare("select count(*) as n from comments where post_id = ?").get(ids.boPost)).toEqual({ n: 0 });
     expect(raw.prepare("select count(*) as n from swap_posts where id = ?").get(ids.cyPost)).toEqual({ n: 1 });
     expect(raw.prepare("select count(*) as n from offers where id = ?").get(ids.deeOnCy)).toEqual({ n: 1 });
+    expect(raw.prepare("select count(*) as n from offers where id = ?").get(ids.closedDemoOffer)).toEqual({ n: 0 });
     // a real student's own post stays without the demo offer and comment on it
     expect(raw.prepare("select count(*) as n from swap_posts where id = ?").get(ids.riaPost)).toEqual({ n: 1 });
     expect(raw.prepare("select count(*) as n from offers where post_id = ?").get(ids.riaPost)).toEqual({ n: 1 });
