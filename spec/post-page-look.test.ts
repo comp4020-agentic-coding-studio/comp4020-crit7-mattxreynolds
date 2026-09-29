@@ -81,10 +81,10 @@ describe("the header (0057)", () => {
     }
   });
 
-  it("follows it with the message whole, the status, the times and the count, all before the comments", async () => {
+  it("follows it with the status, the message whole, the times and the count, all before the comments", async () => {
     const doc = await page(open.path, bystander);
     const head = header(doc);
-    const parts = [".exchange", ".message", ".post-status", ".post-facts time", ".offer-count"].map((sel) => head?.querySelector(sel));
+    const parts = [".exchange", ".post-status", ".message", ".post-facts time", ".offer-count"].map((sel) => head?.querySelector(sel));
     expect(parts.every(Boolean)).toBe(true);
     for (let i = 1; i < parts.length; i++) expect(before(parts[i - 1], parts[i]), `part ${i}`).toBe(true);
     expect(text(head?.querySelector(".message"))).toBe(MESSAGE);
@@ -96,7 +96,7 @@ describe("the header (0057)", () => {
   it("no longer has the Poster / Leaving / Would join list, and has no hidden copy of it", async () => {
     const doc = await page(open.path, bystander);
     expect(text(doc.querySelector("main"))).not.toMatch(/Leaving:?\s|Would join|\bPoster\b(?!\s*tag)/);
-    expect([...doc.querySelectorAll("dt")].map((dt) => text(dt))).toEqual(["Status", "Posted"]);
+    expect([...doc.querySelectorAll("dt")].map((dt) => text(dt))).toEqual(["Posted"]);
     expect(doc.querySelector("[hidden], .visually-hidden, [aria-hidden=true]:not(.exchange-arrow)")).toBeNull();
   });
 

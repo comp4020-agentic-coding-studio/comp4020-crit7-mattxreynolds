@@ -261,4 +261,15 @@ test("the post page is a split on a wide screen and stacks on a phone", async ({
   expect(scroll).toBeLessThanOrEqual(width);
 
   await page.screenshot({ path: screenshotPath(testInfo, "post-split"), fullPage: true });
+
+  // nothing left to act on: the withdrawn post has no side column, so the
+  // thread takes the header's whole width
+  await page.getByRole("button", { name: "Withdraw" }).click();
+  await expect(page.locator(".side-column")).toHaveCount(0);
+  await expect(async () => {
+    const { header, comments } = await boxes(page, { header: ".post-header", comments: ".comments" });
+    expect(Math.abs(comments.x - header.x)).toBeLessThanOrEqual(2);
+    expect(comments.width).toBeGreaterThanOrEqual(header.width - 2);
+    expect(comments.y).toBeGreaterThanOrEqual(header.y + header.height - 1);
+  }).toPass();
 });

@@ -93,10 +93,12 @@ const STATUS_LABEL: Record<string, string> = { open: "Open", withdrawn: "Withdra
       </p>
     )
   }
+  <p class="status-line">
+    <span class="exchange-label">Status</span>
+    <span class="post-status">{STATUS_LABEL[post.status]}</span>
+  </p>
   <p class="message">{post.message ?? "No message"}</p>
   <dl class="post-facts">
-    <dt>Status</dt>
-    <dd class="post-status">{STATUS_LABEL[post.status]}</dd>
     <dt>Posted</dt>
     <dd>
       <time datetime={post.postedAt.toISOString()}>{formatCanberra(post.postedAt)}</time>

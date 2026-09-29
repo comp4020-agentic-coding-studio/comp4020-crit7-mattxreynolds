@@ -731,13 +731,18 @@ textarea {
   align-self: center;
 }
 
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .post-facts dd {
   margin: 0;
 }
 
 /* a plain badge: the word carries the status, the shape says it is a status */
 .post-status {
-  justify-self: start;
   padding: 0 0.6rem;
   border: 1px solid var(--navy);
   border-radius: 999px;
