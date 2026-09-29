@@ -63,4 +63,9 @@ and `pnpm check:evidence` results; reviewer findings and dispositions; deploy
 and probe output; each acceptance line → how it was verified; anything
 unverified, said plainly; any exception to one-issue-per-session; next step.
 Then `gh issue edit N --add-label ready-for-human --remove-label in-progress`.
+After the handoff is posted, tick (`- [x]`) each acceptance line in the issue
+body that you verified, via `gh issue view N --json body` and
+`gh issue edit N --body-file`. Leave unticked any line that needs Matt's
+judgement (screenshots, "reads well") or that you did not verify. A ticked box
+means verified, not accepted.
 Implemented and verified is not accepted: Matt accepts and closes.
