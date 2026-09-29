@@ -6,3 +6,11 @@ import { EventEmitter } from "node:events";
 // bus and clients would miss events.
 export const bus = new EventEmitter();
 bus.setMaxListeners(0);
+
+// "post N changed" (0043). /api/events is public, so this carries only the
+// post id and a kind: never a username, class, message or any other content.
+export type PostChangeKind = "created";
+
+export function publishPostChanged(postId: number, kind: PostChangeKind): void {
+  bus.emit("message", { type: "post-changed", postId, kind });
+}
