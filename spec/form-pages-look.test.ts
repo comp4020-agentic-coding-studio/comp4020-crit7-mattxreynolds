@@ -42,19 +42,22 @@ describe("new post", () => {
     expect(form?.querySelector("button.primary")?.textContent?.trim()).toBe("Post swap");
   });
 
-  it("keeps a refused post's reason as an attention alert in the column, with what was typed", async () => {
-    const res = await submitPost(poster, { leaving: MON_14, join: [MON_14], message: "kept text" });
-    expect(res.status).toBeGreaterThanOrEqual(400);
-    const html = await res.text();
-    const doc = new JSDOM(html).window.document;
+  it("keeps a refused post's reason as an attention alert in the column, with the form and what was typed", async () => {
+    const cookie = await newStudent("formrefuse"); // no open post, so it is the validation that refuses
+    const res = await submitPost(cookie, { leaving: MON_14, join: [MON_14], message: "kept text" });
+    expect(res.status).toBe(400);
+    const doc = new JSDOM(await res.text()).window.document;
     const alert = doc.querySelector(".form-page > [role=alert]");
     expect(alert?.hasAttribute("data-attention")).toBe(true);
     expect(text(alert)).not.toBe("");
+    const form = doc.querySelector(".form-page form#post-form.form-card");
+    expect(form?.querySelector<HTMLTextAreaElement>("textarea#message")?.value).toBe("kept text");
+    expect(form?.querySelector<HTMLInputElement>(`input[name=leaving][value="${MON_14}"]`)?.checked).toBe(true);
   });
 });
 
 describe("edit post", () => {
-  it("is the same column and card, saving with its own label", async () => {
+  it("says a post with a pending offer can't be edited, in the column, with no form", async () => {
     const doc = await page(`/posts/${postId}/edit/`, poster);
     const alert = doc.querySelector(".form-page > [role=alert]");
     // a pending offer locks editing (0018): the page says so in the column instead of the form
