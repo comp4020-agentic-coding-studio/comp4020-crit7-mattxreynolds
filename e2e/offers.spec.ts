@@ -1,4 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
+import { boxes } from "./geometry";
 import { screenshotPath } from "./evidence";
 
 async function signUp(page: Page, username: string) {
@@ -164,4 +165,100 @@ test.describe("accepting and declining", () => {
     await logIn(accepted);
     await expect(page.locator("#your-offers ~ ul .own-offer")).toContainText("Accepted");
   });
+});
+
+// Issue #37 (0057): the post page is a split. At 1920×1080 the actions (the
+// poster's Offers) sit beside the comments and each offer's buttons share a row
+// with who offered; at 390×844 the page stacks header, actions, comments,
+// comment box, the buttons wrap onto their own line at full tap size, and
+// nothing scrolls sideways. Layout only exists in a real browser.
+test("the post page is a split on a wide screen and stacks on a phone", async ({ page }, testInfo) => {
+  const suffix = `${testInfo.project.name[0]}${Date.now() % 100000}`;
+  const poster = `postsplit${suffix}`;
+  const offerers = [`splitoffer${suffix}`, `splittwo${suffix}`];
+
+  await signUp(page, poster);
+  await page.getByRole("link", { name: "Post a swap" }).click();
+  await page.getByRole("radio", { name: "Mon 14:00–15:30" }).check();
+  const join = page.getByRole("group", { name: "Classes you would join" });
+  await join.getByRole("checkbox", { name: "Wed 09:00–10:30" }).check();
+  await join.getByRole("checkbox", { name: "Wed 10:30–12:00" }).check();
+  await page.getByLabel(/Message/).fill("Clashes with my lab, happy to go either Wednesday morning.");
+  await page.getByRole("button", { name: "Post swap" }).click();
+  const postUrl = new URL(
+    (await page.locator("#your-post ~ .post").getByRole("link", { name: "View post" }).getAttribute("href")) ?? "",
+    "http://x",
+  ).pathname;
+  await page.goto(postUrl);
+  await page.getByLabel(/Add a comment/).fill("Anyone free on Wednesday?");
+  await page.getByRole("button", { name: "Comment", exact: true }).click();
+  await page.getByRole("button", { name: "Log out" }).click();
+
+  for (const username of offerers) {
+    await signUp(page, username);
+    await page.goto(postUrl);
+    await page.getByRole("radio", { name: "Wed 09:00–10:30" }).check();
+    await page.getByRole("button", { name: "Offer to swap" }).click();
+    await page.getByRole("button", { name: "Log out" }).click();
+  }
+
+  await page.goto("/login/");
+  await page.getByLabel("Username").fill(poster);
+  await page.getByLabel("Password").fill("e2e-password-1");
+  await page.getByRole("button", { name: "Log in" }).click();
+  await page.goto(postUrl);
+  await expect(page.locator(".offers li")).toHaveCount(2);
+  await expect(page.locator(".post-header .exchange .giving")).toContainText("Mon 14:00–15:30");
+  await expect(page.locator(".post-header .exchange .looking-for")).toContainText("Wed 09:00–10:30, Wed 10:30–12:00");
+
+  // a live refetch can swap the page's nodes at any moment: boxes() reads them
+  // all in one go, and toPass waits out the page settling
+  await expect(async () => {
+    const b = await boxes(page, {
+      header: ".post-header",
+      giving: ".post-header .exchange .giving",
+      looking: ".post-header .exchange .looking-for",
+      side: ".side-column",
+      comments: ".comments",
+      commentBox: "form.comment-form",
+      who: ".offers li .offer-who",
+      accept: ".offers li a.button.primary",
+      decline: ".offers li button.button.secondary",
+      controls: ".offers li .controls",
+    });
+    // the header opens the page, GIVING before LOOKING FOR, and holds everything above the columns
+    expect(b.giving.x < b.looking.x || b.giving.y < b.looking.y).toBe(true);
+    expect(b.header.y + b.header.height).toBeLessThanOrEqual(Math.min(b.side.y, b.comments.y) + 1);
+
+    if (testInfo.project.name === "desktop") {
+      // beside: the actions end before the comments start, and both start at the top
+      expect(b.side.x + b.side.width).toBeLessThanOrEqual(b.comments.x);
+      expect(Math.abs(b.side.y - b.comments.y)).toBeLessThanOrEqual(4);
+      // the comment box is under the thread, in the thread's column
+      expect(b.commentBox.y).toBeGreaterThanOrEqual(b.comments.y + b.comments.height - 1);
+      expect(Math.abs(b.commentBox.x - b.comments.x)).toBeLessThanOrEqual(2);
+      // one row: the buttons are to the right of who offered, on its line
+      expect(b.accept.x).toBeGreaterThanOrEqual(b.who.x + b.who.width - 1);
+      expect(b.accept.y).toBeLessThan(b.who.y + b.who.height);
+      expect(b.decline.y).toBeLessThan(b.who.y + b.who.height);
+    } else {
+      // stacked: header, actions, comments, comment box, each below the last
+      expect(b.side.y).toBeGreaterThanOrEqual(b.header.y + b.header.height - 1);
+      expect(b.comments.y).toBeGreaterThanOrEqual(b.side.y + b.side.height - 1);
+      expect(b.commentBox.y).toBeGreaterThanOrEqual(b.comments.y + b.comments.height - 1);
+      // the buttons wrap onto their own line at full tap size
+      expect(b.controls.y).toBeGreaterThanOrEqual(b.who.y + b.who.height - 1);
+      expect(b.accept.height).toBeGreaterThanOrEqual(44);
+      expect(b.decline.height).toBeGreaterThanOrEqual(44);
+      expect(b.accept.width).toBeGreaterThanOrEqual(44);
+      expect(b.decline.width).toBeGreaterThanOrEqual(44);
+    }
+  }).toPass();
+  const { scroll, width } = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    width: document.documentElement.clientWidth,
+  }));
+  expect(scroll).toBeLessThanOrEqual(width);
+
+  await page.screenshot({ path: screenshotPath(testInfo, "post-split"), fullPage: true });
 });

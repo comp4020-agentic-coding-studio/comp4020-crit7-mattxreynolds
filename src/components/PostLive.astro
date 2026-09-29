@@ -1,4 +1,5 @@
 ---
+import ExchangeRow from "./ExchangeRow.astro";
 import MessageLink from "./MessageLink.astro";
 import OwnOffer from "./OwnOffer.astro";
 import PostControls from "./PostControls.astro";
@@ -15,18 +16,22 @@ interface Props {
   student: Student | null;
 }
 
-// The post page's live part (0044): the post, its status, its pending-offer
-// count and what this viewer sees of its offers (0023) — the one render path
-// for /posts/N/ and for the refetch at /fragments/posts/N/. The poster sees
-// each pending offer and who made it, an offerer sees their own offer and its
-// status, anyone else sees only the count. Below it all is the comment thread
-// (0026, 0029): oldest first, a deleted comment a bare placeholder (0027), the
-// author's Delete only while the post is open. Beside a username — the poster,
-// each commenter, each offerer in the poster's view, both students of a swap —
-// is a "Message" link (0030), never beside the viewer's own. The comment box is not here: it
-// sits outside this region so a half-typed comment survives a refresh (0044).
-// Controls that no longer apply aren't rendered, so they disappear on a
-// refresh.
+// The post page's live part (0044, 0057): the one render path for /posts/N/
+// and for the refetch at /fragments/posts/N/. Three parts, in the order the
+// page stacks them at 390px: the header (the exchange row, the status
+// sentences, the message, status, times and pending-offer count), the side
+// column of actions, then the comment thread (0026, 0029). The poster sees each
+// pending offer and who made it, an offerer sees their own offer and its
+// status, anyone else sees only the count (0023). The count and the poster's
+// Offers are the attention colour while an offer is pending (0058). The thread
+// is oldest first, a deleted comment a bare placeholder (0027), the author's
+// Delete only while the post is open. Beside a username — the poster, each
+// commenter, each offerer in the poster's view, both students of a swap — is a
+// "Message" link (0030), never beside the viewer's own. The comment box is not
+// here: it sits outside this region so a half-typed comment survives a refresh
+// (0044). Controls that no longer apply aren't rendered, so they disappear on a
+// refresh. The parts are siblings of one grid, the region being display:
+// contents (src/styles.css), so the comment box can sit under the thread.
 const { post, student } = Astro.props;
 const isPoster = post.studentId === student?.id;
 // whether a username is the viewer's own, so it gets no Message link (0030)
@@ -42,122 +47,135 @@ const canOffer =
   !isPoster &&
   ownOffer?.status !== "pending" &&
   !declinedOfferOn(student.id, post.id);
+// the count and the poster's Offers are the attention colour while an offer
+// waits on the poster (0058)
+const attention = isPoster && post.status === "open" && post.pendingOffers >= 1;
+// no actions, no side column: the comments take the whole width
+const hasActions = pendingOffers.length > 0 || ownOffer !== null || canOffer || (isPoster && post.status === "open");
+const STATUS_LABEL: Record<string, string> = { open: "Open", withdrawn: "Withdrawn", swapped: "Swapped" };
 ---
 
-{
-  post.status === "withdrawn" && post.withdrawnAt && (
-    <p class="withdrawn">
-      This swap post was withdrawn
-      {withdrawnBySwap(post) && " automatically"} on{" "}
-      <time datetime={post.withdrawnAt.toISOString()}>{formatCanberra(post.withdrawnAt)}</time>
-      {withdrawnBySwap(post) && " because its poster swapped with someone else"}
-    </p>
-  )
-}
-{
-  swap && (
-    <p class="swapped">
-      {swappedSentence({
-        poster: post.username,
-        offered: classLabel(swap.offered),
-        offerer: swap.offerer,
-        leaving: classLabel(post.leaving),
-      })}
-    </p>
-  )
-}
-{
-  swap && isOther(swap.offerer) && (
-    <p class="swapped-offerer">
-      {swap.offerer} <MessageLink username={swap.offerer} />
-    </p>
-  )
-}
-<dl>
-  <dt>Poster</dt>
-  <dd>
-    {post.username}
-    {isOther(post.username) && (
-      <>
-        {" "}
-        <MessageLink username={post.username} />
-      </>
-    )}
-  </dd>
-  <dt>Leaving</dt>
-  <dd>{classLabel(post.leaving)}</dd>
-  <dt>Would join</dt>
-  <dd>{post.joins.map((c) => classLabel(c)).join(", ")}</dd>
-  <dt>Message</dt>
-  <dd class="message">{post.message ?? "No message"}</dd>
-  <dt>Posted</dt>
-  <dd>
-    <time datetime={post.postedAt.toISOString()}>{formatCanberra(post.postedAt)}</time>
-  </dd>
+<div class="post-header">
+  <ExchangeRow leaving={post.leaving} joins={post.joins} large />
   {
-    post.editedAt && (
-      <>
-        <dt>Edited</dt>
-        <dd class="edited">
-          <time datetime={post.editedAt.toISOString()}>{formatCanberra(post.editedAt)}</time>
-        </dd>
-      </>
+    post.status === "withdrawn" && post.withdrawnAt && (
+      <p class="withdrawn">
+        This swap post was withdrawn
+        {withdrawnBySwap(post) && " automatically"} on{" "}
+        <time datetime={post.withdrawnAt.toISOString()}>{formatCanberra(post.withdrawnAt)}</time>
+        {withdrawnBySwap(post) && " because its poster swapped with someone else"}
+      </p>
     )
   }
-</dl>
-{post.status === "open" && <p class="offer-count">{countLabel(post.pendingOffers)}</p>}
+  {
+    swap && (
+      <p class="swapped">
+        {swappedSentence({
+          poster: post.username,
+          offered: classLabel(swap.offered),
+          offerer: swap.offerer,
+          leaving: classLabel(post.leaving),
+        })}
+      </p>
+    )
+  }
+  {
+    swap && isOther(swap.offerer) && (
+      <p class="swapped-offerer">
+        {swap.offerer} <MessageLink username={swap.offerer} />
+      </p>
+    )
+  }
+  {
+    isOther(post.username) && (
+      <p class="poster-line">
+        Posted by <strong>{post.username}</strong> <MessageLink username={post.username} />
+      </p>
+    )
+  }
+  <p class="message">{post.message ?? "No message"}</p>
+  <dl class="post-facts">
+    <dt>Status</dt>
+    <dd class="post-status">{STATUS_LABEL[post.status]}</dd>
+    <dt>Posted</dt>
+    <dd>
+      <time datetime={post.postedAt.toISOString()}>{formatCanberra(post.postedAt)}</time>
+    </dd>
+    {
+      post.editedAt && (
+        <>
+          <dt>Edited</dt>
+          <dd class="edited">
+            <time datetime={post.editedAt.toISOString()}>{formatCanberra(post.editedAt)}</time>
+          </dd>
+        </>
+      )
+    }
+  </dl>
+  {
+    post.status === "open" && (
+      <p class="offer-count" data-attention={attention ? "" : undefined}>
+        {countLabel(post.pendingOffers)}
+      </p>
+    )
+  }
+</div>
 {
-  pendingOffers.length > 0 && (
-    <section aria-labelledby="offers">
-      <h2 id="offers">Offers</h2>
-      <ul class="offers">
-        {pendingOffers.map((offer) => (
-          <li>
-            <span class="offer-text">
-              <strong>{offer.offerer}</strong> would leave <span class="class">{classLabel(offer.offered)}</span>
-            </span>
-            <div class="controls">
-              {isOther(offer.offerer) && <MessageLink username={offer.offerer} />}
-              <a class="button primary" href={`/offers/${offer.id}/accept/`}>
-                Accept
-              </a>
-              <form method="post" action={`/offers/${offer.id}/decline`}>
-                <input type="hidden" name="next" value={pageUrl} />
-                <button class="button secondary">Decline</button>
-              </form>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
+  hasActions && (
+    <div class="side-column">
+      {pendingOffers.length > 0 && (
+        <section aria-labelledby="offers">
+          <h2 id="offers" data-attention>
+            Offers
+          </h2>
+          <ul class="offers" data-attention>
+            {pendingOffers.map((offer) => (
+              <li>
+                <span class="offer-who">
+                  <span class="offer-text">
+                    <strong>{offer.offerer}</strong> would leave <span class="class">{classLabel(offer.offered)}</span>
+                  </span>
+                  {isOther(offer.offerer) && <MessageLink username={offer.offerer} />}
+                </span>
+                <div class="controls">
+                  <a class="button primary" href={`/offers/${offer.id}/accept/`}>
+                    Accept
+                  </a>
+                  <form method="post" action={`/offers/${offer.id}/decline`}>
+                    <input type="hidden" name="next" value={pageUrl} />
+                    <button class="button secondary">Decline</button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {ownOffer && (
+        <section aria-labelledby="your-offer">
+          <h2 id="your-offer">Your offer</h2>
+          <OwnOffer offer={ownOffer} next={pageUrl} />
+        </section>
+      )}
+      {canOffer && (
+        <form method="post" action={`/posts/${post.id}/offers`} class="offer-form">
+          <input type="hidden" name="next" value={pageUrl} />
+          <fieldset>
+            <legend>The class you hold and would leave</legend>
+            {post.joins.map((c) => (
+              <label class="choice">
+                <input type="radio" name="class" value={c.id} checked={post.joins.length === 1} required />
+                {classLabel(c)}
+              </label>
+            ))}
+          </fieldset>
+          <button class="button primary">Offer to swap</button>
+        </form>
+      )}
+      {isPoster && post.status === "open" && <PostControls postId={post.id} next={pageUrl} />}
+    </div>
   )
 }
-{
-  ownOffer && (
-    <section aria-labelledby="your-offer">
-      <h2 id="your-offer">Your offer</h2>
-      <OwnOffer offer={ownOffer} next={pageUrl} />
-    </section>
-  )
-}
-{
-  canOffer && (
-    <form method="post" action={`/posts/${post.id}/offers`} class="offer-form">
-      <input type="hidden" name="next" value={pageUrl} />
-      <fieldset>
-        <legend>The class you hold and would leave</legend>
-        {post.joins.map((c) => (
-          <label class="choice">
-            <input type="radio" name="class" value={c.id} checked={post.joins.length === 1} required />
-            {classLabel(c)}
-          </label>
-        ))}
-      </fieldset>
-      <button class="button primary">Offer to swap</button>
-    </form>
-  )
-}
-{isPoster && post.status === "open" && <PostControls postId={post.id} next={pageUrl} />}
 <section aria-labelledby="comments" class="comments">
   <h2 id="comments">Comments</h2>
   {

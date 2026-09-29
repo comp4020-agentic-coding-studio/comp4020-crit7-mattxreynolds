@@ -10,7 +10,9 @@ import { getPost } from "../../lib/posts";
 // that never existed is a 404. The rest is PostLive, which /fragments/posts/N/
 // renders too (0044). The comment box (0026) stays out of PostLive, so the live
 // refresh never swaps it and a half-typed comment survives; it is drawn only
-// for an open post.
+// for an open post. .post-split is the grid around both (0057): the region
+// (display: contents) puts its header, side column and thread in it, and the
+// box goes under the thread.
 const student = Astro.locals.student;
 const id = /^[0-9]+$/.test(Astro.params.id ?? "") ? Number(Astro.params.id) : null;
 const post = id === null ? null : getPost(id);
@@ -22,17 +24,19 @@ if (!post) Astro.response.status = 404;
     post ? (
       <>
         <h1>Swap post by {post.username}</h1>
-        <div id="post-live" data-live-url={`/fragments/posts/${post.id}/`} data-post-id={post.id}>
-          <PostLive post={post} student={student} />
+        <div class="post-split">
+          <div id="post-live" data-live-url={`/fragments/posts/${post.id}/`} data-post-id={post.id}>
+            <PostLive post={post} student={student} />
+          </div>
+          {student && post.status === "open" && (
+            <form method="post" action={`/posts/${post.id}/comments`} class="comment-form">
+              <input type="hidden" name="next" value={`/posts/${post.id}/`} />
+              <label for="comment-body">Add a comment (up to {COMMENT_MAX} characters)</label>
+              <textarea id="comment-body" name="body" rows="3" maxlength={COMMENT_MAX} required />
+              <button class="button primary">Comment</button>
+            </form>
+          )}
         </div>
-        {student && post.status === "open" && (
-          <form method="post" action={`/posts/${post.id}/comments`} class="comment-form">
-            <input type="hidden" name="next" value={`/posts/${post.id}/`} />
-            <label for="comment-body">Add a comment (up to {COMMENT_MAX} characters)</label>
-            <textarea id="comment-body" name="body" rows="3" maxlength={COMMENT_MAX} required />
-            <button class="button primary">Comment</button>
-          </form>
-        )}
         <p>
           <a href="/">Back to the board</a>
         </p>

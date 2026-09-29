@@ -5,14 +5,16 @@ import type { SchoolClass } from "../lib/schema";
 interface Props {
   leaving: SchoolClass;
   joins: SchoolClass[];
+  // the post page's header sets it larger
+  large?: boolean;
 }
 
 // The exchange row (0057): GIVING the leaving class, then LOOKING FOR every
 // join class. It opens a board entry; the post page reuses it, enlarged.
-const { leaving, joins } = Astro.props;
+const { leaving, joins, large = false } = Astro.props;
 ---
 
-<p class="exchange">
+<p class:list={["exchange", { large }]}>
   <span class="giving">
     <span class="exchange-label">Giving</span>
     <span class="class">{classLabel(leaving)}</span>
