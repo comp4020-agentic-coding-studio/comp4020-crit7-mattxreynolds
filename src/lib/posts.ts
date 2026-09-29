@@ -19,6 +19,8 @@ export interface PostView {
   postedAt: Date;
   editedAt: Date | null;
   withdrawnAt: Date | null;
+  // who withdrew it; empty for a post a swap withdrew (0024)
+  withdrawnBy: number | null;
   // offers still waiting for the poster (0023): the one count everyone sees
   pendingOffers: number;
 }
@@ -43,6 +45,23 @@ const charCount = (text: string): number => [...text].length;
 
 export function allClasses(): SchoolClass[] {
   return db.select().from(classes).orderBy(classes.position).all();
+}
+
+// The post's own page says a swap withdrew it (0024): a withdrawn post no one
+// withdrew.
+export const withdrawnBySwap = (post: { status: string; withdrawnBy: number | null }): boolean =>
+  post.status === "withdrawn" && post.withdrawnBy === null;
+
+// The student's most recent post if it was swapped (0024): the board's "Post a
+// swap" spot links to it until they post again.
+export function swappedPostIdFor(studentId: number): number | null {
+  const latest = db
+    .select({ id: swapPosts.id, status: swapPosts.status })
+    .from(swapPosts)
+    .where(eq(swapPosts.studentId, studentId))
+    .orderBy(desc(swapPosts.postedAt), desc(swapPosts.id))
+    .get();
+  return latest?.status === "swapped" ? latest.id : null;
 }
 
 export function openPostIdFor(studentId: number): number | null {
@@ -128,16 +147,19 @@ export function createPost(studentId: number, input: NewPost): CreatePostResult 
 const NOT_FOUND = "There is no swap post with that number.";
 const NOT_YOURS = "Only the poster can change this swap post.";
 const WITHDRAWN = "This swap post was withdrawn.";
+const SWAPPED = "This swap post was swapped, so it can't be changed.";
 export const LOCKED = "This swap post has pending offers, so it can't be edited. Withdraw it to change your mind.";
 
 // The post as a change to it needs to see it: who owns it and whether it is
 // still open. Whoever isn't the poster is refused first, so a stranger learns
 // nothing else about the post from the reason.
+export const notOpenMessage = (status: string): string => (status === "swapped" ? SWAPPED : WITHDRAWN);
+
 function changeable(studentId: number, postId: number): { ok: true } | { ok: false; reason: "not-found" | "forbidden" | "not-open"; error: string } {
   const row = db.select({ studentId: swapPosts.studentId, status: swapPosts.status }).from(swapPosts).where(eq(swapPosts.id, postId)).get();
   if (!row) return { ok: false, reason: "not-found", error: NOT_FOUND };
   if (row.studentId !== studentId) return { ok: false, reason: "forbidden", error: NOT_YOURS };
-  if (row.status !== "open") return { ok: false, reason: "not-open", error: WITHDRAWN };
+  if (row.status !== "open") return { ok: false, reason: "not-open", error: notOpenMessage(row.status) };
   return { ok: true };
 }
 
@@ -245,6 +267,7 @@ const postColumns = {
   postedAt: swapPosts.postedAt,
   editedAt: swapPosts.editedAt,
   withdrawnAt: swapPosts.withdrawnAt,
+  withdrawnBy: swapPosts.withdrawnBy,
 };
 
 // Every open post, newest first (0019).

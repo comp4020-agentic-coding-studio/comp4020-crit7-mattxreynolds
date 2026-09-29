@@ -213,14 +213,14 @@ describe("the post page's three views (0023)", () => {
     await submitOffer(b.cookie, p.id, { class: WED_1030 });
 
     const doc = await page(`/posts/${p.id}/`, p.cookie);
-    const offers = [...doc.querySelectorAll(".offers li")].map((li) => text(li));
+    const offers = [...doc.querySelectorAll(".offers li .offer-text")].map((li) => text(li));
     expect(offers).toEqual([
       `${a.username} would leave ${classLabel(CLASSES[2])}`,
       `${b.username} would leave ${classLabel(CLASSES[3])}`,
     ]);
     expect(text(doc.querySelector(".offer-count"))).toBe("2 pending offers");
-    // Withdraw and Offer belong to the offerer, not the poster
-    expect(doc.querySelector('form[action^="/offers/"]')).toBeNull();
+    // Withdraw and Offer belong to the offerer, not the poster (who answers instead)
+    expect(doc.querySelector('form[action^="/offers/"][action$="/withdraw"]')).toBeNull();
     expect(doc.querySelector('form[action$="/offers"]')).toBeNull();
   });
 
@@ -423,6 +423,7 @@ describe("the demo seed's offers (0038)", () => {
            join students offerer on offerer.id = o.offerer_id
            join swap_posts p on p.id = o.post_id
            join students poster on poster.id = p.student_id
+           where o.status = 'pending'
            order by poster.username, offerer.username`,
         )
         .all() as { offerer: string; poster: string; offered: string; status: string; closedReason: string | null; at: number; postedAt: number }[];
@@ -444,7 +445,7 @@ describe("the demo seed's offers (0038)", () => {
       const board = await page("/", alex, server.baseUrl);
       expect(text(board.querySelector("#your-post ~ .post .offer-count"))).toBe("2 pending offers");
       const alexPost = board.querySelector('#your-post ~ .post a[href^="/posts/"]')?.getAttribute("href") ?? "";
-      const offers = [...(await page(alexPost, alex, server.baseUrl)).querySelectorAll(".offers li")].map((li) => text(li));
+      const offers = [...(await page(alexPost, alex, server.baseUrl)).querySelectorAll(".offers li .offer-text")].map((li) => text(li));
       expect(offers).toEqual([
         `priya would leave ${classLabel(CLASSES[2])}`,
         `sam would leave ${classLabel(CLASSES[3])}`,

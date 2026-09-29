@@ -1,0 +1,85 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import { acceptOffer, offerToAnswer } from "../../../lib/offer-store";
+import { checkAnswer } from "../../../lib/offers";
+import { classLabel } from "../../../lib/classes";
+
+// The confirm step for accepting an offer (0024): a page of its own, so it
+// works with no JavaScript. It says accepting is final, and its form is the
+// only thing that accepts: a POST that doesn't carry the form's `confirm` is
+// refused. Like the edit page this takes its own POST; an accepted offer goes
+// back to the post page, which now says "Swapped" (0045).
+const student = Astro.locals.student;
+const id = /^[0-9]+$/.test(Astro.params.id ?? "") ? Number(Astro.params.id) : null;
+if (!student) return Astro.redirect(`/login/?next=${encodeURIComponent(`/offers/${id ?? 0}/accept/`)}`);
+
+const view = id === null ? null : offerToAnswer(id);
+// what is in the way of accepting, if anything: the page then says so instead
+// of showing the form
+let blocked: string | null = null;
+let error: string | null = null;
+
+if (!view) {
+  Astro.response.status = 404;
+  blocked = "There is no offer with that number.";
+} else {
+  const refusal = checkAnswer({
+    actorId: student.id,
+    post: { studentId: view.posterId, status: view.postStatus },
+    offer: { status: view.status },
+  });
+  if (refusal) {
+    Astro.response.status = refusal.reason === "forbidden" ? 403 : 409;
+    blocked = refusal.error;
+  } else if (Astro.request.method === "POST") {
+    const form = await Astro.request.formData().catch(() => new FormData());
+    if (form.get("confirm") !== "yes") {
+      Astro.response.status = 400;
+      error = "Accepting an offer needs its confirm step: use the button on this page.";
+    } else {
+      const result = acceptOffer(student.id, view.id);
+      if (result.ok) return Astro.redirect(`/posts/${result.postId}/`, 303);
+      Astro.response.status = result.reason === "forbidden" ? 403 : result.reason === "not-found" ? 404 : 409;
+      blocked = result.error;
+    }
+  }
+}
+---
+
+<Layout title="Accept this offer?" student={student}>
+  <h1>Accept this offer?</h1>
+  {error && !blocked && <p role="alert">{error}</p>}
+  {
+    blocked || !view ? (
+      <p role="alert">
+        {blocked}
+        {view && view.posterId === student.id && (
+          <>
+            {" "}
+            <a href={`/posts/${view.postId}/`}>Back to the post</a>.
+          </>
+        )}
+      </p>
+    ) : (
+      <>
+        <p>
+          <strong>{view.offerer}</strong> would leave <span class="class">{classLabel(view.offered)}</span> and take your
+          place in <span class="class">{classLabel(view.leaving)}</span>. You would move to{" "}
+          <span class="class">{classLabel(view.offered)}</span>.
+        </p>
+        <p class="final">
+          <strong>Accepting is final.</strong> There is no undo. Your post becomes swapped and leaves the board. It also
+          closes the other pending offers on it, every other pending offer you or {view.offerer} have made, and{" "}
+          {view.offerer}'s own open post if they have one.
+        </p>
+        <p>This app can't change your timetable. After accepting, make the change in MyTimetable.</p>
+        <form method="post" action={`/offers/${view.id}/accept/`} class="controls">
+          <input type="hidden" name="confirm" value="yes" />
+          <button>Accept the swap</button>
+          <a href={`/posts/${view.postId}/`}>Cancel</a>
+        </form>
+      </>
+    )
+  }
+  <p><a href="/">Back to the board</a></p>
+</Layout>

@@ -3,13 +3,14 @@ import OwnOffer from "../../components/OwnOffer.astro";
 import PostControls from "../../components/PostControls.astro";
 import Layout from "../../layouts/Layout.astro";
 import { classLabel } from "../../lib/classes";
-import { declinedOfferOn, ownOfferOn, pendingOffersOn } from "../../lib/offer-store";
-import { countLabel } from "../../lib/offers";
-import { getPost } from "../../lib/posts";
+import { acceptedSwapOn, declinedOfferOn, ownOfferOn, pendingOffersOn } from "../../lib/offer-store";
+import { countLabel, swappedSentence } from "../../lib/offers";
+import { getPost, withdrawnBySwap } from "../../lib/posts";
 import { formatCanberra } from "../../lib/time";
 
 // The post page (0020): the whole post, edited marker included (0018). A
-// withdrawn post still loads, says so with the time and has no controls. An id
+// withdrawn post still loads, says so with the time (and that a swap withdrew
+// it, 0024) and has no controls; a swapped one says who moved where. An id
 // that never existed is a 404. An open post renders three ways (0023): the
 // poster sees each pending offer and who made it, an offerer sees their own
 // offer and its status, and anyone else sees only the pending-offer count.
@@ -21,6 +22,7 @@ if (!post) Astro.response.status = 404;
 const isPoster = post !== null && post.studentId === student?.id;
 const pageUrl = post ? `/posts/${post.id}/` : "/";
 const pendingOffers = post && isPoster ? pendingOffersOn(post.id) : [];
+const swap = post?.status === "swapped" ? acceptedSwapOn(post.id) : null;
 const ownOffer = post && student && !isPoster ? ownOfferOn(student.id, post.id) : null;
 const canOffer =
   post !== null &&
@@ -39,8 +41,22 @@ const canOffer =
         {
           post.status === "withdrawn" && post.withdrawnAt && (
             <p class="withdrawn">
-              This swap post was withdrawn on{" "}
+              This swap post was withdrawn
+              {withdrawnBySwap(post) && " automatically"} on{" "}
               <time datetime={post.withdrawnAt.toISOString()}>{formatCanberra(post.withdrawnAt)}</time>
+              {withdrawnBySwap(post) && " because its poster swapped with someone else"}
+            </p>
+          )
+        }
+        {
+          swap && (
+            <p class="swapped">
+              {swappedSentence({
+                poster: post.username,
+                offered: classLabel(swap.offered),
+                offerer: swap.offerer,
+                leaving: classLabel(post.leaving),
+              })}
             </p>
           )
         }
@@ -76,7 +92,18 @@ const canOffer =
               <ul class="offers">
                 {pendingOffers.map((offer) => (
                   <li>
-                    <strong>{offer.offerer}</strong> would leave <span class="class">{classLabel(offer.offered)}</span>
+                    <span class="offer-text">
+                      <strong>{offer.offerer}</strong> would leave <span class="class">{classLabel(offer.offered)}</span>
+                    </span>
+                    <div class="controls">
+                      <a class="button" href={`/offers/${offer.id}/accept/`}>
+                        Accept
+                      </a>
+                      <form method="post" action={`/offers/${offer.id}/decline`}>
+                        <input type="hidden" name="next" value={pageUrl} />
+                        <button>Decline</button>
+                      </form>
+                    </div>
                   </li>
                 ))}
               </ul>

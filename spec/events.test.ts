@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { CLASSES } from "../src/lib/classes";
 import {
+  acceptOffer,
   baseUrl,
+  declineOffer,
   newStudent,
+  offerIdsOn,
   ownOfferId,
   ownPostId,
   submitEdit,
@@ -146,6 +149,70 @@ describe("/api/events", () => {
         { type: "post-changed", postId: id, kind: "offer-made" },
         { type: "post-changed", postId: id, kind: "withdrawn" },
       ]);
+
+      const lower = raw.toLowerCase();
+      for (const secret of [...names, message]) expect(lower).not.toContain(secret.toLowerCase());
+      for (const c of CLASSES) {
+        for (const word of [c.id, c.start, c.end, c.tutor]) expect(lower).not.toContain(word.toLowerCase());
+      }
+    } finally {
+      controller.abort();
+    }
+  });
+
+  it("broadcasts post N changed for a decline, and for every post an accept changes, with no content", async () => {
+    const [MON_14, , WED_9, WED_1030, WED_14, WED_1530] = CLASSES.map((c) => c.id);
+    const poster = await newStudent("acceptevt");
+    const offerer = await newStudent("accofferer");
+    const decliner = await newStudent("accdecl");
+    const third = await newStudent("accthird");
+    const other = await newStudent("accother");
+    const names = await Promise.all([poster, offerer, decliner, third, other].map((c) => usernameOf(c)));
+    const message = "distinctive-accept-text-24680";
+    const post = async (cookie: string, leaving: string, join: string[]) => {
+      expect((await submitPost(cookie, { leaving, join, message })).status).toBe(303);
+      return (await ownPostId(cookie)) as number;
+    };
+    const posterPost = await post(poster, MON_14, [WED_9, WED_1030]);
+    const offererPost = await post(offerer, WED_9, [MON_14]);
+    const otherPost = await post(other, WED_14, [WED_1530]);
+    expect((await submitOffer(offerer, posterPost, { class: WED_9 })).status).toBe(303);
+    expect((await submitOffer(decliner, posterPost, { class: WED_1030 })).status).toBe(303);
+    // the poster has an offer on another post, which the accept closes
+    expect((await submitOffer(poster, otherPost, { class: WED_1530 })).status).toBe(303);
+    expect((await submitOffer(third, offererPost, { class: MON_14 })).status).toBe(303);
+    const [first, second] = await offerIdsOn(poster, posterPost);
+
+    const controller = new AbortController();
+    const res = await fetch(new URL("/api/events", baseUrl), { signal: controller.signal });
+    const stream = (res.body as ReadableStream<Uint8Array>).getReader();
+    try {
+      await readUntil(stream, (seen) => seen.includes(": connected"));
+      // refused answers change nothing and send nothing
+      expect((await acceptOffer(offerer, first)).status).toBe(403);
+      expect((await declineOffer(other, second, "/")).status).toBe(403);
+      expect((await acceptOffer(poster, first, { confirm: false })).status).toBe(400);
+
+      expect((await declineOffer(poster, second, "/")).status).toBe(303);
+      expect((await acceptOffer(poster, first)).status).toBe(303);
+
+      const ids = [posterPost, offererPost, otherPost];
+      const raw = await readUntil(stream, (seen) => ids.every((id) => seen.includes(`"postId":${id},`)));
+      const eventsFor = (id: number) =>
+        raw
+          .split("\n")
+          .filter((l) => l.startsWith("data: ") && l.includes(`"postId":${id},`))
+          .map((l) => JSON.parse(l.slice(6)));
+      // the swapped post: the decline, then one "swapped" for the accept (its
+      // other offers closing adds nothing more for the same post)
+      expect(eventsFor(posterPost)).toEqual([
+        { type: "post-changed", postId: posterPost, kind: "offer-declined" },
+        { type: "post-changed", postId: posterPost, kind: "swapped" },
+      ]);
+      // the offerer's own post was withdrawn by the swap
+      expect(eventsFor(offererPost)).toEqual([{ type: "post-changed", postId: offererPost, kind: "withdrawn" }]);
+      // a post that only lost an offer
+      expect(eventsFor(otherPost)).toEqual([{ type: "post-changed", postId: otherPost, kind: "offer-closed" }]);
 
       const lower = raw.toLowerCase();
       for (const secret of [...names, message]) expect(lower).not.toContain(secret.toLowerCase());

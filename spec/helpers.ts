@@ -142,3 +142,40 @@ export async function ownOfferId(cookie: string, postId: number | string, origin
   const id = action?.match(/^\/offers\/(\d+)\/withdraw$/)?.[1];
   return id ? Number(id) : null;
 }
+
+/** Submit the confirm step's form for offer `id`: `confirm` is what its button sends. */
+export function acceptOffer(
+  cookie: string | null,
+  id: number | string,
+  fields: { confirm?: boolean } = { confirm: true },
+  origin = baseUrl,
+): Promise<Response> {
+  const body = new URLSearchParams();
+  if (fields.confirm) body.set("confirm", "yes");
+  return fetch(new URL(`/offers/${id}/accept/`, origin), {
+    method: "POST",
+    headers: cookie ? { origin, cookie } : { origin },
+    body,
+    redirect: "manual",
+  });
+}
+
+/** Press Decline on offer `id`: `next` is the page it sits on. */
+export function declineOffer(cookie: string | null, id: number | string, next?: string, origin = baseUrl): Promise<Response> {
+  const body = new URLSearchParams();
+  if (next !== undefined) body.set("next", next);
+  return fetch(new URL(`/offers/${id}/decline`, origin), {
+    method: "POST",
+    headers: cookie ? { origin, cookie } : { origin },
+    body,
+    redirect: "manual",
+  });
+}
+
+/** The ids of the pending offers on post `postId`, in the order the poster sees them, read from their Decline forms. */
+export async function offerIdsOn(cookie: string, postId: number | string, origin = baseUrl): Promise<number[]> {
+  const doc = await page(`/posts/${postId}/`, cookie, origin);
+  return [...doc.querySelectorAll('form[action$="/decline"]')].map((form) =>
+    Number(form.getAttribute("action")?.match(/^\/offers\/(\d+)\/decline$/)?.[1]),
+  );
+}

@@ -2,7 +2,7 @@
 import PostForm from "../../../components/PostForm.astro";
 import Layout from "../../../layouts/Layout.astro";
 import { setFlash } from "../../../lib/flash";
-import { LOCKED, allClasses, editPost, getPost } from "../../../lib/posts";
+import { LOCKED, allClasses, editPost, getPost, notOpenMessage } from "../../../lib/posts";
 
 // Editing a swap post (0018). Like the new-post page this takes its own POST:
 // a refused edit is this page again with the reason and what was typed, and a
@@ -29,7 +29,7 @@ if (!post) {
   blocked = "Only the poster can edit this swap post.";
 } else if (post.status !== "open") {
   Astro.response.status = 409;
-  blocked = "This swap post was withdrawn.";
+  blocked = notOpenMessage(post.status);
 } else if (post.pendingOffers > 0) {
   Astro.response.status = 409;
   blocked = LOCKED;

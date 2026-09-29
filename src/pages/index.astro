@@ -5,7 +5,7 @@ import Layout from "../layouts/Layout.astro";
 import OwnOffer from "../components/OwnOffer.astro";
 import { takeFlash } from "../lib/flash";
 import { offersMadeBy } from "../lib/offer-store";
-import { listOpenPosts } from "../lib/posts";
+import { listOpenPosts, swappedPostIdFor } from "../lib/posts";
 
 // A logged-out visitor gets the login page here, in place, with a 200 (0048)
 // — the deploy probe and the link check both fetch "/" without following
@@ -19,6 +19,9 @@ const notice = student ? takeFlash(Astro.cookies) : null;
 const open = student ? listOpenPosts() : [];
 const mine = open.find((post) => post.studentId === student?.id);
 const others = open.filter((post) => post !== mine);
+// after an accept the poster's spot links to the swapped post until they post
+// again (0024)
+const swappedPostId = student && !mine ? swappedPostIdFor(student.id) : null;
 // "Your offers" (0019, 0025): every offer the student has made, pending first;
 // the section appears only once they have made one
 const madeOffers = student ? offersMadeBy(student.id) : [];
@@ -36,6 +39,13 @@ const madeOffers = student ? offersMadeBy(student.id) : [];
         <section aria-labelledby="your-post">
           <h2 id="your-post">Your post</h2>
           {mine ? <PostEntry post={mine} own /> : <a class="button" href="/posts/new/">Post a swap</a>}
+          {
+            swappedPostId !== null && (
+              <p class="swapped-line">
+                Your last post was swapped. <a href={`/posts/${swappedPostId}/`}>See the swapped post</a>.
+              </p>
+            )
+          }
         </section>
         {
           madeOffers.length > 0 && (

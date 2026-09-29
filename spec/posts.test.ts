@@ -354,7 +354,7 @@ describe("the classes seed file", () => {
 });
 
 describe("the demo seed's posts", () => {
-  it("opens a fresh database with alex's, priya's and lena's open posts, dated over the previous three days", async () => {
+  it("opens a fresh database with alex's, priya's and lena's open posts (and jordan's swapped one), dated over the previous three days", async () => {
     const dbPath = join(mkdtempSync(join(tmpdir(), "posts-seed-")), "test.db");
     const before = Date.now();
     const server = await spawnServer(dbPath);
@@ -371,6 +371,7 @@ describe("the demo seed's posts", () => {
 
       expect(posts.map((p) => [p.username, p.leaving, p.joins, p.message, p.status])).toEqual([
         ["alex", MON_14, [WED_9, WED_1030].sort().join(","), "Clashes with my lab.", "open"],
+        ["jordan", WED_14, WED_1530, null, "swapped"], // #21: off the board
         ["lena", MON_1530, [WED_14, WED_1530].sort().join(","), null, "open"],
         ["priya", WED_9, [MON_14, MON_1530].sort().join(","), null, "open"],
       ]);
@@ -379,7 +380,7 @@ describe("the demo seed's posts", () => {
         expect(at).toBeLessThanOrEqual(Date.now());
         expect(at).toBeGreaterThan(before - 3 * 24 * 60 * 60 * 1000);
       }
-      expect(new Set(ats).size).toBe(3);
+      expect(new Set(ats).size).toBe(4);
 
       // and the board shows the three, newest first, to a student with no post
       const noah = await demoCookie("noah", server.baseUrl);

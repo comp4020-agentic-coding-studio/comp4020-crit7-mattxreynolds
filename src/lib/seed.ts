@@ -5,8 +5,8 @@ import { hashPassword } from "./password";
 import { classes, offers, students, swapPostJoinClasses, swapPosts } from "./schema";
 
 // The demo students (0014, 0037): first-name usernames sharing one published
-// password, and the posts and pending offers written for them (0038). Later
-// slices add the swapped post, comments and private messages beside these rows.
+// password, and the posts and offers written for them (0038). Later slices add
+// comments and private messages beside these rows.
 export const DEMO_USERNAMES = ["alex", "priya", "sam", "lena", "jordan", "mei", "noah"] as const;
 export const DEMO_PASSWORD = "demo-student";
 
@@ -41,6 +41,29 @@ const DEMO_OFFERS: { offerer: string; poster: string; offered: ClassId; hoursAgo
   { offerer: "sam", poster: "alex", offered: "dachi", hoursAgo: 30 },
   { offerer: "lena", poster: "priya", offered: "bada", hoursAgo: 20 },
 ];
+
+// jordan's swapped post (0038) and the offer mei made on it, which jordan
+// accepted: jordan moves to Wed 15:30 and mei to Wed 14:00. It is the oldest
+// thing in the seed, and the swap happened after the offer, so the
+// jordan/mei conversation and jordan's comment (later slices) can sit either
+// side of `swappedHoursAgo`. Neither student has anything pending.
+const DEMO_SWAP: {
+  poster: string;
+  leaving: ClassId;
+  join: ClassId;
+  offerer: string;
+  postedHoursAgo: number;
+  offeredHoursAgo: number;
+  swappedHoursAgo: number;
+} = {
+  poster: "jordan",
+  leaving: "yunlin",
+  join: "liuru",
+  offerer: "mei",
+  postedHoursAgo: 71,
+  offeredHoursAgo: 65,
+  swappedHoursAgo: 60,
+};
 
 // Written only when no demo student exists (0040): a fresh volume or a fresh
 // test database. A boot never tops up a partly present seed, or a restart
@@ -95,6 +118,32 @@ export function seedDemoStudents(db: BetterSQLite3Database): void {
       if (offererId === undefined || postId === undefined) continue;
       tx.insert(offers)
         .values({ postId, offererId, offeredClassId: offer.offered, createdAt: new Date(now - offer.hoursAgo * HOUR) })
+        .run();
+    }
+
+    const posterId = ids.get(DEMO_SWAP.poster);
+    const offererId = ids.get(DEMO_SWAP.offerer);
+    if (posterId !== undefined && offererId !== undefined) {
+      const { id } = tx
+        .insert(swapPosts)
+        .values({
+          studentId: posterId,
+          leavingClassId: DEMO_SWAP.leaving,
+          status: "swapped",
+          postedAt: new Date(now - DEMO_SWAP.postedHoursAgo * HOUR),
+        })
+        .returning({ id: swapPosts.id })
+        .get();
+      tx.insert(swapPostJoinClasses).values({ postId: id, classId: DEMO_SWAP.join }).run();
+      tx.insert(offers)
+        .values({
+          postId: id,
+          offererId,
+          offeredClassId: DEMO_SWAP.join,
+          status: "accepted",
+          createdAt: new Date(now - DEMO_SWAP.offeredHoursAgo * HOUR),
+          resolvedAt: new Date(now - DEMO_SWAP.swappedHoursAgo * HOUR),
+        })
         .run();
     }
   });

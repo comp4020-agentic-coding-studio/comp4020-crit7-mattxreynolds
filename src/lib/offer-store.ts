@@ -1,7 +1,18 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "./db";
 import { publishPostChanged } from "./events";
-import { type ClosedReason, type OfferRefusal, checkOffer, closeTransition, withdrawTransition } from "./offers";
+import {
+  type AnswerRefusal,
+  type ClosedReason,
+  type OfferRefusal,
+  acceptTransition,
+  checkAnswer,
+  checkOffer,
+  closeTransition,
+  declineTransition,
+  planAccept,
+  withdrawTransition,
+} from "./offers";
 import { type SchoolClass, classes, offers, students, swapPostJoinClasses, swapPosts } from "./schema";
 
 // The database side of offers (0022, 0023, 0025). The rules are in offers.ts;
@@ -13,6 +24,13 @@ export type MakeOfferResult =
 export type WithdrawOfferResult =
   | { ok: true }
   | { ok: false; reason: "not-found" | "forbidden" | "not-pending"; error: string };
+
+export type AnswerOfferResult =
+  | { ok: true; postId: number }
+  | { ok: false; reason: "not-found" | AnswerRefusal["reason"]; error: string };
+
+const NO_SUCH_OFFER = "There is no offer with that number.";
+const NOT_PENDING = "This offer is not pending, so it can't be answered.";
 
 const classById = (): Map<string, SchoolClass> =>
   new Map(db.select().from(classes).all().map((c) => [c.id, c]));
@@ -88,6 +106,118 @@ export function withdrawOffer(studentId: number, offerId: number): WithdrawOffer
   return { ok: true };
 }
 
+// The poster turns down a pending offer (0024): one click, no reason. The post
+// stays open, and the offerer can't offer on it again (0022).
+export function declineOffer(studentId: number, offerId: number): AnswerOfferResult {
+  const offer = db
+    .select({ postId: offers.postId, status: offers.status })
+    .from(offers)
+    .where(eq(offers.id, offerId))
+    .get();
+  if (!offer) return { ok: false, reason: "not-found", error: NO_SUCH_OFFER };
+  const post = db
+    .select({ studentId: swapPosts.studentId, status: swapPosts.status })
+    .from(swapPosts)
+    .where(eq(swapPosts.id, offer.postId))
+    .get();
+  if (!post) return { ok: false, reason: "not-found", error: NO_SUCH_OFFER };
+  const refusal = checkAnswer({ actorId: studentId, post, offer });
+  if (refusal) return { ok: false, ...refusal };
+  const change = declineTransition(offer);
+  if (!change) return { ok: false, reason: "not-pending", error: NOT_PENDING };
+
+  const { changes } = db
+    .update(offers)
+    .set({ status: change.status, closedReason: change.closedReason, resolvedAt: new Date() })
+    .where(and(eq(offers.id, offerId), eq(offers.status, "pending")))
+    .run();
+  if (changes === 0) return { ok: false, reason: "not-pending", error: NOT_PENDING };
+
+  publishPostChanged(offer.postId, "offer-declined");
+  return { ok: true, postId: offer.postId };
+}
+
+// The poster accepts a pending offer (0024), which is final. One transaction
+// makes the offer accepted and the post swapped, and closes what planAccept
+// says: the post's other offers, every other pending offer by either student,
+// and the offerer's own open post with its offers. Nothing is half done: if
+// any step fails, none of it happened. Each post that changed then gets its one
+// event.
+export function acceptOffer(studentId: number, offerId: number): AnswerOfferResult {
+  const outcome = db.transaction(
+    (tx): AnswerOfferResult & { events?: Map<number, "swapped" | "withdrawn" | "offer-closed"> } => {
+      const offer = tx
+        .select({ id: offers.id, postId: offers.postId, offererId: offers.offererId, status: offers.status })
+        .from(offers)
+        .where(eq(offers.id, offerId))
+        .get();
+      if (!offer) return { ok: false, reason: "not-found", error: NO_SUCH_OFFER };
+      const post = tx
+        .select({ studentId: swapPosts.studentId, status: swapPosts.status })
+        .from(swapPosts)
+        .where(eq(swapPosts.id, offer.postId))
+        .get();
+      if (!post) return { ok: false, reason: "not-found", error: NO_SUCH_OFFER };
+      const refusal = checkAnswer({ actorId: studentId, post, offer });
+      if (refusal) return { ok: false, ...refusal };
+
+      const offererOpenPostId =
+        tx
+          .select({ id: swapPosts.id })
+          .from(swapPosts)
+          .where(and(eq(swapPosts.studentId, offer.offererId), eq(swapPosts.status, "open")))
+          .get()?.id ?? null;
+      const involvedPosts = offererOpenPostId === null ? [offer.postId] : [offer.postId, offererOpenPostId];
+      const pending = tx
+        .select({ id: offers.id, postId: offers.postId, offererId: offers.offererId })
+        .from(offers)
+        .where(
+          and(
+            eq(offers.status, "pending"),
+            or(inArray(offers.offererId, [post.studentId, offer.offererId]), inArray(offers.postId, involvedPosts)),
+          ),
+        )
+        .all();
+      const plan = planAccept({ accepted: offer, posterId: post.studentId, offererOpenPostId, pending });
+
+      const now = new Date();
+      const accepted = acceptTransition(offer);
+      if (!accepted) return { ok: false, reason: "not-pending", error: NOT_PENDING };
+      tx.update(offers)
+        .set({ status: accepted.status, closedReason: accepted.closedReason, resolvedAt: now })
+        .where(eq(offers.id, offerId))
+        .run();
+      tx.update(swapPosts).set({ status: "swapped" }).where(eq(swapPosts.id, offer.postId)).run();
+      const events = new Map<number, "swapped" | "withdrawn" | "offer-closed">([[offer.postId, "swapped"]]);
+
+      // withdrawn by the swap: nobody withdrew it, so withdrawn_by stays empty
+      if (plan.withdrawPostId !== null) {
+        tx.update(swapPosts)
+          .set({ status: "withdrawn", withdrawnAt: now, withdrawnBy: null })
+          .where(eq(swapPosts.id, plan.withdrawPostId))
+          .run();
+        events.set(plan.withdrawPostId, "withdrawn");
+      }
+      const postOf = new Map(pending.map((o) => [o.id, o.postId]));
+      for (const { offerId: closingId, reason } of plan.close) {
+        const change = closeTransition({ status: "pending" }, reason);
+        if (!change) continue;
+        tx.update(offers)
+          .set({ status: change.status, closedReason: change.closedReason, resolvedAt: now })
+          .where(eq(offers.id, closingId))
+          .run();
+        const closedPost = postOf.get(closingId);
+        if (closedPost !== undefined && !events.has(closedPost)) events.set(closedPost, "offer-closed");
+      }
+      return { ok: true, postId: offer.postId, events };
+    },
+  );
+
+  if (!outcome.ok) return outcome;
+  for (const [postId, kind] of outcome.events ?? []) publishPostChanged(postId, kind);
+  return { ok: true, postId: outcome.postId };
+}
+
 // The app ends every pending offer on a post (0025), for `reason`. It runs
 // inside the caller's transaction so the post and its offers change together,
 // and the caller's own event covers the post (one event per affected post).
@@ -144,6 +274,62 @@ export function pendingOffersOn(postId: number): PostOffer[] {
       const offered = byId.get(row.offeredClassId);
       return offered ? [{ id: row.id, offerer: row.offerer, offered }] : [];
     });
+}
+
+export interface AcceptedSwap {
+  offerer: string;
+  offered: SchoolClass;
+}
+
+// Who a swapped post was swapped with and the class they leave (0024): the
+// post's accepted offer.
+export function acceptedSwapOn(postId: number): AcceptedSwap | null {
+  const row = db
+    .select({ offerer: students.username, offeredClassId: offers.offeredClassId })
+    .from(offers)
+    .innerJoin(students, eq(offers.offererId, students.id))
+    .where(and(eq(offers.postId, postId), eq(offers.status, "accepted")))
+    .get();
+  const offered = row ? classById().get(row.offeredClassId) : undefined;
+  return row && offered ? { offerer: row.offerer, offered } : null;
+}
+
+export interface OfferToAnswer {
+  id: number;
+  postId: number;
+  posterId: number;
+  postStatus: string;
+  status: string;
+  offerer: string;
+  offered: SchoolClass;
+  leaving: SchoolClass;
+}
+
+// An offer with what the confirm step says about it (0024). Callers show it
+// to the poster only.
+export function offerToAnswer(offerId: number): OfferToAnswer | null {
+  const byId = classById();
+  const row = db
+    .select({
+      id: offers.id,
+      postId: offers.postId,
+      posterId: swapPosts.studentId,
+      postStatus: swapPosts.status,
+      status: offers.status,
+      offerer: students.username,
+      offeredClassId: offers.offeredClassId,
+      leavingClassId: swapPosts.leavingClassId,
+    })
+    .from(offers)
+    .innerJoin(swapPosts, eq(offers.postId, swapPosts.id))
+    .innerJoin(students, eq(offers.offererId, students.id))
+    .where(eq(offers.id, offerId))
+    .get();
+  if (!row) return null;
+  const { offeredClassId, leavingClassId, ...rest } = row;
+  const offered = byId.get(offeredClassId);
+  const leaving = byId.get(leavingClassId);
+  return offered && leaving ? { ...rest, offered, leaving } : null;
 }
 
 export interface OwnOffer {

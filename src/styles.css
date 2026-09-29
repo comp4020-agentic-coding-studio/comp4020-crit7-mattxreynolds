@@ -179,6 +179,34 @@ textarea {
   font-weight: 600;
 }
 
+.swapped {
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid #1f6f3f;
+  background: #e8f4ec;
+  font-weight: 600;
+}
+
+.swapped-line {
+  margin-block: 0.5rem;
+}
+
+.offers li {
+  margin-block: 0.5rem;
+}
+
+.offers .controls {
+  display: inline-flex;
+  margin-block: 0;
+  margin-inline-start: 0.5rem;
+  vertical-align: middle;
+}
+
+.final {
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid #8a5a00;
+  background: #fbf3e2;
+}
+
 .offer-count {
   font-weight: 600;
 }
