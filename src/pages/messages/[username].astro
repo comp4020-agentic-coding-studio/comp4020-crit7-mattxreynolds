@@ -1,0 +1,58 @@
+---
+import Conversation from "../../components/Conversation.astro";
+import Layout from "../../layouts/Layout.astro";
+import { conversationPartner, PRIVATE_MESSAGE_MAX } from "../../lib/privateMessages";
+
+// The conversation with one student (0031): "me and that student", so there is
+// no address for anyone else's. An unknown username, or your own, is a 404.
+// The thread is Conversation, which /fragments/messages/<username>/ renders
+// too (0034); the box stays out of it, so the live refresh never swaps it and
+// a half-typed private message survives.
+const student = Astro.locals.student;
+const other = student ? conversationPartner(student.id, Astro.params.username ?? "") : null;
+if (!other) Astro.response.status = 404;
+---
+
+<Layout title={other ? `Conversation with ${other.username}` : "Conversation not found"} student={student}>
+  {
+    student && other ? (
+      <>
+        <h1>Conversation with {other.username}</h1>
+        <div id="conversation-live" data-live-url={`/fragments/messages/${encodeURIComponent(other.username)}/`}>
+          <Conversation student={student} other={other} />
+        </div>
+        <form method="post" action={`/messages/${encodeURIComponent(other.username)}/send`} class="private-message-form">
+          <label for="private-message-body">
+            Private message to {other.username} (up to {PRIVATE_MESSAGE_MAX} characters)
+          </label>
+          <textarea id="private-message-body" name="body" rows="3" maxlength={PRIVATE_MESSAGE_MAX} required />
+          <button>Send</button>
+        </form>
+        <p>
+          <a href="/">Back to the board</a>
+        </p>
+      </>
+    ) : (
+      <>
+        <h1>Conversation not found</h1>
+        <p>
+          There is no student to message at that address. <a href="/">Back to the board</a>
+        </p>
+      </>
+    )
+  }
+</Layout>
+
+<script>
+  import { conversationRefetchOn } from "../../lib/live";
+  import { startLive } from "../../scripts/live";
+
+  const container = document.getElementById("conversation-live");
+  if (container) {
+    startLive({
+      container,
+      url: container.dataset.liveUrl ?? "",
+      wants: conversationRefetchOn,
+    });
+  }
+</script>

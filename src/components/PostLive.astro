@@ -1,4 +1,5 @@
 ---
+import MessageLink from "./MessageLink.astro";
 import OwnOffer from "./OwnOffer.astro";
 import PostControls from "./PostControls.astro";
 import { classLabel } from "../lib/classes";
@@ -20,12 +21,16 @@ interface Props {
 // each pending offer and who made it, an offerer sees their own offer and its
 // status, anyone else sees only the count. Below it all is the comment thread
 // (0026, 0029): oldest first, a deleted comment a bare placeholder (0027), the
-// author's Delete only while the post is open. The comment box is not here: it
+// author's Delete only while the post is open. Beside a username — the poster,
+// each commenter, each offerer in the poster's view, both students of a swap —
+// is a "Message" link (0030), never beside the viewer's own. The comment box is not here: it
 // sits outside this region so a half-typed comment survives a refresh (0044).
 // Controls that no longer apply aren't rendered, so they disappear on a
 // refresh.
 const { post, student } = Astro.props;
 const isPoster = post.studentId === student?.id;
+// whether a username is the viewer's own, so it gets no Message link (0030)
+const isOther = (username: string): boolean => student !== null && student.username !== username;
 const pageUrl = `/posts/${post.id}/`;
 const thread = commentsOn(post.id);
 const pendingOffers = isPoster ? pendingOffersOn(post.id) : [];
@@ -61,9 +66,24 @@ const canOffer =
     </p>
   )
 }
+{
+  swap && isOther(swap.offerer) && (
+    <p class="swapped-offerer">
+      {swap.offerer} <MessageLink username={swap.offerer} />
+    </p>
+  )
+}
 <dl>
   <dt>Poster</dt>
-  <dd>{post.username}</dd>
+  <dd>
+    {post.username}
+    {isOther(post.username) && (
+      <>
+        {" "}
+        <MessageLink username={post.username} />
+      </>
+    )}
+  </dd>
   <dt>Leaving</dt>
   <dd>{classLabel(post.leaving)}</dd>
   <dt>Would join</dt>
@@ -97,6 +117,7 @@ const canOffer =
               <strong>{offer.offerer}</strong> would leave <span class="class">{classLabel(offer.offered)}</span>
             </span>
             <div class="controls">
+              {isOther(offer.offerer) && <MessageLink username={offer.offerer} />}
               <a class="button" href={`/offers/${offer.id}/accept/`}>
                 Accept
               </a>
@@ -152,6 +173,11 @@ const canOffer =
               <p class="comment-head">
                 <strong>{comment.author}</strong>
                 {comment.byPoster && <span class="poster-tag">poster</span>}{" "}
+                {isOther(comment.author) && (
+                  <>
+                    <MessageLink username={comment.author} />{" "}
+                  </>
+                )}
                 <time datetime={comment.createdAt.toISOString()}>{formatCanberra(comment.createdAt)}</time>
               </p>
               <p class="comment-body">{comment.body}</p>

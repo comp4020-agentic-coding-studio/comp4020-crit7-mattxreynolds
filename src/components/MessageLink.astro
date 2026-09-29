@@ -1,0 +1,11 @@
+---
+interface Props {
+  username: string;
+}
+
+// The "Message" link beside a username on a post page (0030): the start of a
+// private message to that student. Visible text "Message"; the name says whom.
+const { username } = Astro.props;
+---
+
+<a class="message-link" href={`/messages/${encodeURIComponent(username)}/`} aria-label={`Message ${username}`}>Message</a>

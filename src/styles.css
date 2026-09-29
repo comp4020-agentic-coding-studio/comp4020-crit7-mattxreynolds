@@ -259,7 +259,8 @@ textarea {
 }
 
 #board-live:focus,
-#post-live:focus {
+#post-live:focus,
+#conversation-live:focus {
   outline: none;
 }
 
@@ -306,5 +307,42 @@ textarea {
 }
 
 .comment-form {
+  margin-block: 1rem;
+}
+
+.message-link {
+  margin-inline: 0.25rem;
+}
+
+.swapped-offerer {
+  margin-block: 0.5rem;
+}
+
+.private-message-list {
+  list-style: none;
+  padding: 0;
+}
+
+.private-message {
+  margin-block: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #c8c8c8;
+  border-radius: 0.25rem;
+}
+
+.private-message.mine {
+  background: #f2f5fa;
+}
+
+.private-message p {
+  margin-block: 0.25rem;
+}
+
+.private-message-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.private-message-form {
   margin-block: 1rem;
 }

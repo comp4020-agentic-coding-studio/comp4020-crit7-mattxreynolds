@@ -82,6 +82,19 @@ async function ownedPosts(): Promise<{
 }
 
 const owned = await ownedPosts();
+// a conversation (0031) with something in it: a fresh student writes to demo
+// student alex, who a fresh database always has
+const talker = await newStudent("invtalk");
+expect(
+  (
+    await fetch(new URL("/messages/alex/send", baseUrl), {
+      method: "POST",
+      headers: { origin: baseUrl, cookie: talker },
+      body: new URLSearchParams({ body: "Route coverage.\nTwo lines." }),
+      redirect: "manual",
+    })
+  ).status,
+).toBe(303);
 // [route, cookie to fetch it with (a fresh student when none)]
 const LOGGED_IN_ROUTES: [string, string | null][] = [
   ["/", null],
@@ -97,6 +110,8 @@ const LOGGED_IN_ROUTES: [string, string | null][] = [
   [`/posts/${owned.swapped}/`, owned.swappedOfferer],
   [`/posts/${owned.swapWithdrawn}/`, owned.swappedOfferer],
   [owned.confirmPath, owned.offeredOwner],
+  ["/messages/alex/", null],
+  ["/messages/alex/", talker],
 ];
 
 async function signUpAndGetCookie(username: string, password: string): Promise<string> {
@@ -150,6 +165,11 @@ for (const [route, ownerCookie] of LOGGED_IN_ROUTES) describe(`invariants: ${rou
   if (route === `/posts/${owned.swapWithdrawn}/`) {
     it("says a swap withdrew the post", () => {
       expect(doc.body.textContent).toContain("This swap post was withdrawn automatically");
+    });
+  }
+  if (route === "/messages/alex/") {
+    it("is the conversation with alex, not the not-found page", () => {
+      expect(doc.querySelector("h1")?.textContent).toBe("Conversation with alex");
     });
   }
   if (route === owned.confirmPath) {

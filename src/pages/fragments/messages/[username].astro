@@ -1,0 +1,17 @@
+---
+import Conversation from "../../../components/Conversation.astro";
+import { conversationPartner } from "../../../lib/privateMessages";
+
+// A conversation's live part alone, for the refresh on "a private message was
+// sent" (0034): the same server-rendered HTML /messages/<username>/ puts
+// inside #conversation-live, for this viewer. A logged-out request gets a 401
+// from src/middleware.ts (0013). It builds the thread from the viewer's id, so
+// it can only return the viewer's own private messages (0031).
+const student = Astro.locals.student;
+if (!student) return new Response(null, { status: 401 });
+const other = conversationPartner(student.id, Astro.params.username ?? "");
+if (!other) return new Response(null, { status: 404 });
+Astro.response.headers.set("cache-control", "no-store");
+---
+
+<Conversation student={student} other={other} />

@@ -1,0 +1,36 @@
+---
+import { conversationWith, type OtherStudent } from "../lib/privateMessages";
+import type { Student } from "../lib/schema";
+import { formatCanberra } from "../lib/time";
+
+interface Props {
+  student: Student;
+  other: OtherStudent;
+}
+
+// A conversation's live part (0034): every private message between the viewer
+// and one other student, oldest first, each with its sender and time (0031,
+// 0032) — the one render path for /messages/<username>/ and for the refetch
+// at /fragments/messages/<username>/. The message box is not here: it sits
+// outside this region so a half-typed private message survives a refresh.
+const { student, other } = Astro.props;
+const thread = conversationWith(student.id, other, student.username);
+---
+
+{
+  thread.length === 0 ? (
+    <p class="no-private-messages">No private messages yet.</p>
+  ) : (
+    <ul class="private-message-list">
+      {thread.map((message) => (
+        <li class={message.fromViewer ? "private-message mine" : "private-message"}>
+          <p class="private-message-head">
+            <strong>{message.sender}</strong>{" "}
+            <time datetime={message.createdAt.toISOString()}>{formatCanberra(message.createdAt)}</time>
+          </p>
+          <p class="private-message-body">{message.body}</p>
+        </li>
+      ))}
+    </ul>
+  )
+}

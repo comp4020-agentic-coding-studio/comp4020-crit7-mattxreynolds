@@ -32,3 +32,15 @@ export function boardRefetchOn(event: PostChanged | null): boolean {
 export function postRefetchOn(event: PostChanged | null, postId: number): boolean {
   return event !== null && event.postId === postId;
 }
+
+/** An open conversation refetches on any "a private message was sent" (0034).
+ *  The event names no conversation, so it cannot tell whose it is: the
+ *  refetch is the viewer's own thread, and identical HTML is not swapped. */
+export function conversationRefetchOn(data: string): boolean {
+  try {
+    const message: unknown = JSON.parse(data);
+    return typeof message === "object" && message !== null && (message as Record<string, unknown>).type === "private-message";
+  } catch {
+    return false;
+  }
+}

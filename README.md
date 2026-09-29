@@ -32,8 +32,11 @@ survives a redeploy, with a visible "Log out" on every logged-in page.
 
 **Demo login, not ANU single sign-on.** Don't use your ANU password. Anyone
 can sign up or use a demo student, so treat what you post as visible to
-strangers. Demo students are shared, so their messages aren't private. There
-is no rate limiting, password reset or account deletion.
+strangers. Demo students are shared, so their messages aren't private. Private
+messages can be read only by the two students in the conversation, which for
+a demo student means anyone. They are stored unencrypted, and whoever runs
+the site can read them. There is no rate limiting, password reset or account
+deletion.
 
 **Seven demo students, one shared password.** The login page has a
 one-click button for each of `alex`, `priya`, `sam`, `lena`, `jordan`, `mei`

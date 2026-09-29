@@ -140,7 +140,7 @@ test.describe("accepting and declining", () => {
     await expect(page.locator(".offer-count")).toHaveText("1 pending offer");
 
     // accepting goes through a page that says it is final
-    await page.locator(".offers li", { hasText: accepted }).getByRole("link", { name: "Accept" }).click();
+    await page.locator(".offers li", { hasText: accepted }).getByRole("link", { name: "Accept", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Accept this offer?" })).toBeVisible();
     await expect(page.getByText("Accepting is final")).toBeVisible();
     await page.screenshot({ path: screenshotPath(testInfo, "accept-confirm"), fullPage: true });

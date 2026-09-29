@@ -2,11 +2,11 @@ import { inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { CLASSES, type ClassId } from "./classes";
 import { hashPassword } from "./password";
-import { classes, comments, offers, students, swapPostJoinClasses, swapPosts } from "./schema";
+import { classes, comments, offers, privateMessages, students, swapPostJoinClasses, swapPosts } from "./schema";
 
 // The demo students (0014, 0037): first-name usernames sharing one published
-// password, and the posts, offers and comments written for them (0038). A later slice adds private
-// messages beside these rows.
+// password, and the posts, offers, comments and private messages written for
+// them (0038).
 export const DEMO_USERNAMES = ["alex", "priya", "sam", "lena", "jordan", "mei", "noah"] as const;
 export const DEMO_PASSWORD = "demo-student";
 
@@ -50,11 +50,45 @@ const DEMO_COMMENTS: { author: string; poster: string; body: string; hoursAgo: n
   { author: "alex", poster: "alex", body: "Either is fine. It is only Mon 14:00 that clashes with my lab.", hoursAgo: 46 },
 ];
 
+// The private messages (0038). priya writes to alex about her offer and he has
+// not opened it (unread, 0033). jordan and mei talk after the swap, which is
+// why a conversation outlives a post (0026); both were read. Each sits after
+// what it refers to: priya's offer (60h ago) and the swap (60h ago).
+const DEMO_PRIVATE_MESSAGES: {
+  sender: string;
+  recipient: string;
+  body: string;
+  hoursAgo: number;
+  read: boolean;
+}[] = [
+  {
+    sender: "priya",
+    recipient: "alex",
+    body: "Hi Alex, I have offered my Wed 09:00. Are you free to sort out the MyTimetable change today?",
+    hoursAgo: 36,
+    read: false,
+  },
+  {
+    sender: "jordan",
+    recipient: "mei",
+    body: "Thanks for the swap. I have moved to Wed 15:30 in MyTimetable.",
+    hoursAgo: 58,
+    read: true,
+  },
+  {
+    sender: "mei",
+    recipient: "jordan",
+    body: "Done on my side too, I am in Wed 14:00 now. See you Wednesday!",
+    hoursAgo: 57,
+    read: true,
+  },
+];
+
 // jordan's swapped post (0038) and the offer mei made on it, which jordan
 // accepted: jordan moves to Wed 15:30 and mei to Wed 14:00. It is the oldest
 // thing in the seed, and the swap happened after the offer, so the
-// jordan/mei conversation and jordan's comment (later slices) can sit either
-// side of `swappedHoursAgo`. Neither student has anything pending.
+// jordan/mei conversation and jordan's comment sit either side of
+// `swappedHoursAgo`. Neither student has anything pending.
 const DEMO_SWAP: {
   poster: string;
   leaving: ClassId;
@@ -140,6 +174,23 @@ export function seedDemoStudents(db: BetterSQLite3Database): void {
       if (authorId === undefined || postId === undefined) continue;
       tx.insert(comments)
         .values({ postId, authorId, body: comment.body, createdAt: new Date(now - comment.hoursAgo * HOUR) })
+        .run();
+    }
+
+    for (const message of DEMO_PRIVATE_MESSAGES) {
+      const senderId = ids.get(message.sender);
+      const recipientId = ids.get(message.recipient);
+      if (senderId === undefined || recipientId === undefined) continue;
+      const sentAt = now - message.hoursAgo * HOUR;
+      tx.insert(privateMessages)
+        .values({
+          senderId,
+          recipientId,
+          body: message.body,
+          createdAt: new Date(sentAt),
+          // a read one was opened soon after it was sent
+          readAt: message.read ? new Date(sentAt + HOUR) : null,
+        })
         .run();
     }
 

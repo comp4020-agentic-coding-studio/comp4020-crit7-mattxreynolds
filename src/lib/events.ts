@@ -24,3 +24,10 @@ export type PostChangeKind =
 export function publishPostChanged(postId: number, kind: PostChangeKind): void {
   bus.emit("message", { type: "post-changed", postId, kind });
 }
+
+// "a private message was sent" (0034). /api/events is public, so this carries
+// nothing at all: no id, username or text. An open conversation reacts by
+// refetching its own thread over a logged-in request.
+export function publishPrivateMessageSent(): void {
+  bus.emit("message", { type: "private-message" });
+}
