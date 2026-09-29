@@ -93,12 +93,29 @@ describe("creating a swap post", () => {
     expect(doc.querySelector(`main a[href="/posts/${firstId}/"]`)).toBeTruthy();
   });
 
-  it("does not let two simultaneous posts from one student both in", async () => {
+  it("lets only one of several posts sent at once through", async () => {
     const cookie = await newStudent();
     const results = await Promise.all([submitPost(cookie, OK), submitPost(cookie, OK), submitPost(cookie, OK)]);
     expect(results.filter((r) => r.status === 303)).toHaveLength(1);
     expect(await boardEntries(cookie, "your-post")).toHaveLength(1);
   });
+
+  it("is backed by the database: a second open post for one student cannot be inserted", async () => {
+    const dbPath = join(mkdtempSync(join(tmpdir(), "posts-index-")), "test.db");
+    const server = await spawnServer(dbPath);
+    await server.stop();
+    const db = new Database(dbPath);
+    try {
+      const noah = db.prepare("select id from students where username = 'noah'").get() as { id: number };
+      const insert = db.prepare(
+        "insert into swap_posts (student_id, leaving_class_id, posted_at) values (?, 'shitao', ?)",
+      );
+      insert.run(noah.id, Date.now());
+      expect(() => insert.run(noah.id, Date.now())).toThrow(/UNIQUE constraint failed/);
+    } finally {
+      db.close();
+    }
+  }, 30_000);
 
   it("offers the six classes on the form, and needs a login", async () => {
     const cookie = await newStudent();

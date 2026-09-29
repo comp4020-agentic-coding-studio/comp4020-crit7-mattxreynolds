@@ -4,7 +4,7 @@ import { screenshotPath } from "./evidence";
 // Issue #18: post a swap from the board, land back on it with the notice,
 // reload and still see it — at both viewports, for the handoff screenshots.
 test("post a swap, reload the board, and it is still there", async ({ page }, testInfo) => {
-  const username = `e2e${testInfo.project.name[0]}${Date.now() % 100000}`;
+  const username = `swapper${testInfo.project.name[0]}${Date.now() % 100000}`;
   await page.goto("/signup/");
   await page.getByLabel("Username").fill(username);
   await page.getByLabel("Password").fill("e2e-password-1");
