@@ -19,7 +19,7 @@ if (student && other) markConversationRead(student.id, other);
 <Layout title={other ? `Conversation with ${other.username}` : "Conversation not found"} student={student}>
   {
     student && other ? (
-      <>
+      <div class="messages-page">
         <h1>Conversation with {other.username}</h1>
         <div id="conversation-live" data-live-url={`/fragments/messages/${encodeURIComponent(other.username)}/`}>
           <Conversation student={student} other={other} />
@@ -31,10 +31,10 @@ if (student && other) markConversationRead(student.id, other);
           <textarea id="private-message-body" name="body" rows="3" maxlength={PRIVATE_MESSAGE_MAX} required />
           <button class="button primary">Send</button>
         </form>
-        <p>
+        <p class="back-link">
           <a href="/">Back to the board</a>
         </p>
-      </>
+      </div>
     ) : (
       <>
         <h1>Conversation not found</h1>
