@@ -179,3 +179,19 @@ export async function offerIdsOn(cookie: string, postId: number | string, origin
     Number(form.getAttribute("action")?.match(/^\/offers\/(\d+)\/decline$/)?.[1]),
   );
 }
+
+/** A board entry's exchange row (0057), read as data: the GIVING class label,
+ *  the LOOKING FOR class labels in the order shown, and whether GIVING comes
+ *  first in the markup. Null when the entry has no row. */
+export function exchangeOf(entry: Element | null | undefined): { giving: string[]; lookingFor: string[]; givingFirst: boolean } | null {
+  const row = entry?.querySelector(".exchange");
+  const giving = row?.querySelector(".giving");
+  const looking = row?.querySelector(".looking-for");
+  if (!row || !giving || !looking) return null;
+  const labels = (el: Element) => [...el.querySelectorAll(".class")].map((c) => text(c));
+  return {
+    giving: labels(giving),
+    lookingFor: labels(looking),
+    givingFirst: Boolean(giving.compareDocumentPosition(looking) & 4),
+  };
+}

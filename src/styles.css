@@ -527,3 +527,84 @@ textarea {
   font-weight: 700;
   border-color: var(--navy);
 }
+
+/* The exchange row (0057): GIVING → LOOKING FOR opens every board entry. In a
+   card narrower than a row needs (the side column, a phone) it stacks, the
+   arrow pointing down. */
+.post {
+  container-type: inline-size;
+}
+
+.exchange {
+  display: grid;
+  grid-template-columns: minmax(0, auto) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 0.25rem 0.75rem;
+  margin-block: 0.4rem;
+  font-weight: 700;
+}
+
+.exchange-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.exchange-arrow {
+  color: var(--link);
+  font-size: 1.3rem;
+  line-height: 1.3;
+}
+
+@container (max-width: 25rem) {
+  .exchange {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 0.1rem;
+  }
+
+  .exchange-arrow {
+    margin-inline-start: 0.3rem;
+    line-height: 1;
+    transform: rotate(90deg);
+    transform-origin: 50% 50%;
+    width: 1.3rem;
+  }
+}
+
+/* The board (0054): the side column beside Open posts on a wide screen, above
+   it when stacked. One grid inside one fragment, so the live refetch swaps it
+   whole (0042). */
+.board-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 2rem;
+}
+
+.side-column,
+.main-column {
+  min-width: 0;
+}
+
+@media (min-width: 60rem) {
+  .board-split {
+    grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/* your own pending-offer count, at 1 or more: a coral pill (0058) */
+.offer-count[data-attention] {
+  display: inline-block;
+  padding: 0.05rem 0.7rem;
+  border-radius: 999px;
+  background: var(--coral);
+  color: var(--navy);
+}
+
+.offer-count[data-attention] a {
+  color: inherit;
+}

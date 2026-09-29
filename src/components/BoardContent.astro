@@ -25,32 +25,38 @@ const swappedPostId = mine ? null : swappedPostIdFor(student.id);
 const madeOffers = offersMadeBy(student.id);
 ---
 
-<section aria-labelledby="your-post">
-  <h2 id="your-post">Your post</h2>
-  {mine ? <PostEntry post={mine} own /> : <a class="button primary" href="/posts/new/">Post a swap</a>}
-  {
-    swappedPostId !== null && (
-      <p class="swapped-line">
-        Your last post was swapped. <a href={`/posts/${swappedPostId}/`}>See the swapped post</a>.
-      </p>
-    )
-  }
-</section>
-{
-  madeOffers.length > 0 && (
-    <section aria-labelledby="your-offers">
-      <h2 id="your-offers">Your offers</h2>
-      <ul class="your-offers">
-        {madeOffers.map((offer) => (
-          <li>
-            <OwnOffer offer={offer} next="/" link />
-          </li>
-        ))}
-      </ul>
+<div class="board-split">
+  <div class="side-column">
+    <section aria-labelledby="your-post">
+      <h2 id="your-post">Your post</h2>
+      {mine ? <PostEntry post={mine} own /> : <a class="button primary" href="/posts/new/">Post a swap</a>}
+      {
+        swappedPostId !== null && (
+          <p class="swapped-line">
+            Your last post was swapped. <a href={`/posts/${swappedPostId}/`}>See the swapped post</a>.
+          </p>
+        )
+      }
     </section>
-  )
-}
-<section aria-labelledby="open-posts">
-  <h2 id="open-posts">Open posts</h2>
-  {others.length === 0 ? <p>No other open swap posts.</p> : others.map((post) => <PostEntry post={post} />)}
-</section>
+    {
+      madeOffers.length > 0 && (
+        <section aria-labelledby="your-offers">
+          <h2 id="your-offers">Your offers</h2>
+          <ul class="your-offers">
+            {madeOffers.map((offer) => (
+              <li>
+                <OwnOffer offer={offer} next="/" link />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+  </div>
+  <div class="main-column">
+    <section aria-labelledby="open-posts">
+      <h2 id="open-posts">Open posts</h2>
+      {others.length === 0 ? <p>No other open swap posts.</p> : others.map((post) => <PostEntry post={post} />)}
+    </section>
+  </div>
+</div>

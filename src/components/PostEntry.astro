@@ -1,10 +1,10 @@
 ---
 import { boardMessage, type PostView } from "../lib/posts";
-import { classLabel } from "../lib/classes";
 import { commentCountLabel } from "../lib/comments";
 import { countLabel } from "../lib/offers";
 import { formatCanberra } from "../lib/time";
 
+import ExchangeRow from "./ExchangeRow.astro";
 import PostControls from "./PostControls.astro";
 
 interface Props {
@@ -13,27 +13,19 @@ interface Props {
   own?: boolean;
 }
 
-// One swap post as the board shows it (0047): the poster, the leaving and
-// join classes, the message cut short, the posted time, the pending-offer
-// count and a link to the post page, which has the rest.
+// One swap post as the board shows it (0047): the poster, the exchange row
+// (leaving class, join classes), the message cut short, the posted time, the
+// pending-offer count and a link to the post page, which has the rest.
 const { post, own = false } = Astro.props;
 const message = boardMessage(post.message);
+// the count is the attention colour only on your own post with something to
+// answer (0058)
+const attention = own && post.pendingOffers >= 1;
 ---
 
 <article class="post">
   <h3>{post.username}</h3>
-  <p>Leaving: <span class="class">{classLabel(post.leaving)}</span></p>
-  <p>
-    Would join:{" "}
-    {
-      post.joins.map((c, i) => (
-        <>
-          {i > 0 && ", "}
-          <span class="class">{classLabel(c)}</span>
-        </>
-      ))
-    }
-  </p>
+  <ExchangeRow leaving={post.leaving} joins={post.joins} />
   {message !== null && <p class="message">{message}</p>}
   <p class="meta">
     Posted <time datetime={post.postedAt.toISOString()}>{formatCanberra(post.postedAt)}</time> ·{" "}
@@ -49,7 +41,7 @@ const message = boardMessage(post.message);
     }
     <a href={`/posts/${post.id}/`}>View post</a>
   </p>
-  <p class="offer-count">
+  <p class="offer-count" data-attention={attention ? "" : undefined}>
     {own ? <a href={`/posts/${post.id}/`}>{countLabel(post.pendingOffers)}</a> : countLabel(post.pendingOffers)}
   </p>
   <p class="comment-count">{commentCountLabel(post.comments)}</p>

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { CLASSES, classLabel } from "../src/lib/classes";
 import {
   baseUrl,
+  exchangeOf,
   newStudent,
   ownPostId,
   page,
@@ -41,8 +42,11 @@ describe("editing a swap post", () => {
     expect(res.headers.get("location")).toBe("/");
 
     const [entry] = await pinned(cookie);
-    expect(text(entry)).toContain(`Leaving: ${classLabel(CLASSES[1])}`);
-    expect(text(entry)).toContain(`${classLabel(CLASSES[4])}, ${classLabel(CLASSES[5])}`);
+    expect(exchangeOf(entry)).toEqual({
+      giving: [classLabel(CLASSES[1])],
+      lookingFor: [classLabel(CLASSES[4]), classLabel(CLASSES[5])],
+      givingFirst: true,
+    });
     expect(text(entry)).toContain("Now it is my exam.");
     expect(text(entry)).not.toContain("Clashes with my lab.");
     expect(text(entry.querySelector(".edited"))).toMatch(/^Edited /);
@@ -178,7 +182,10 @@ describe("withdrawing a swap post", () => {
   it("takes it off the board, frees Post a swap, and lets the poster post again", async () => {
     const { cookie, id, username } = await postedStudent();
     const viewer = await newStudent("viewer");
-    const onBoard = async (c: string) => text((await page("/", c)).querySelector("main")).includes(`Leaving: ${classLabel(CLASSES[0])}`);
+    const onBoard = async (c: string) =>
+      [...(await page("/", c)).querySelectorAll("main .post")].some(
+        (el) => text(el.querySelector("h3")) === username && exchangeOf(el)?.giving.includes(classLabel(CLASSES[0])),
+      );
     expect(await onBoard(viewer)).toBe(true);
 
     const res = await withdrawPost(cookie, id, "/");

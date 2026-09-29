@@ -1,0 +1,32 @@
+---
+import { classLabel } from "../lib/classes";
+import type { SchoolClass } from "../lib/schema";
+
+interface Props {
+  leaving: SchoolClass;
+  joins: SchoolClass[];
+}
+
+// The exchange row (0057): GIVING the leaving class, then LOOKING FOR every
+// join class. It opens a board entry; the post page reuses it, enlarged.
+const { leaving, joins } = Astro.props;
+---
+
+<p class="exchange">
+  <span class="giving">
+    <span class="exchange-label">Giving</span>
+    <span class="class">{classLabel(leaving)}</span>
+  </span>
+  <span class="exchange-arrow" aria-hidden="true">→</span>
+  <span class="looking-for">
+    <span class="exchange-label">Looking for</span>
+    {
+      joins.map((c, i) => (
+        <>
+          {i > 0 && ", "}
+          <span class="class">{classLabel(c)}</span>
+        </>
+      ))
+    }
+  </span>
+</p>

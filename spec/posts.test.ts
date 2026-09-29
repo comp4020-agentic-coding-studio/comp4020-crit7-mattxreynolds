@@ -8,6 +8,7 @@ import { CLASSES, CLASSES_ACCESSED, classLabel } from "../src/lib/classes";
 import { formatCanberra } from "../src/lib/time";
 import {
   baseUrl,
+  exchangeOf,
   demoCookie,
   newStudent,
   ownPostId,
@@ -43,8 +44,11 @@ describe("creating a swap post", () => {
       const doc = await page("/", viewer);
       const entry = [...doc.querySelectorAll(".post")].find((el) => text(el.querySelector("h3")) === username);
       expect(entry, "the post is on the board").toBeTruthy();
-      expect(text(entry)).toContain(`Leaving: ${classLabel(CLASSES[0])}`);
-      expect(text(entry)).toContain(`${classLabel(CLASSES[2])}, ${classLabel(CLASSES[3])}`);
+      expect(exchangeOf(entry)).toEqual({
+        giving: [classLabel(CLASSES[0])],
+        lookingFor: [classLabel(CLASSES[2]), classLabel(CLASSES[3])],
+        givingFirst: true,
+      });
       expect(text(entry)).toContain("Clashes with my lab.");
     }
   });
