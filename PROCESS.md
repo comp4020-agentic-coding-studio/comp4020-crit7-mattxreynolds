@@ -1,54 +1,21 @@
 # Process overview
 
-<!-- TEMPLATE: this file is a shape to fill in, not a form. Replace everything
-     in it with your own overview, and delete this comment — `pnpm
-     check:evidence` will remind you if it's still here. -->
-
-Written by you, for a reader: how you got from the brief to the harness and
-agentic workflow behind this submission. Markers read this file and follow its
-citations; they don't trawl the repo for evidence you didn't point at.
-
-This file is the shape; the course site's
-[assessment page](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#what-you-submit)
-is the requirement, and its
-[word counts](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#word-counts)
-cover every deliverable.
-
 ## What I built
 
-A sentence or two. `README.md` is where the account of what the app is and what
-good means here lives; this file is how you got there.
+A swap board for COMP4020's six crit sessions, standing in for MyTimetable's blind tutorial swaps: students post the class they leave and the ones they would join, others comment, offer and message, and the poster accepts or declines. It sits behind a simple demo login and updates live. `README.md` says what good means here.
 
 ## How I got here
 
-The account of the process: how the work actually went, and how you knew the
-result was right. Tell it in whatever order makes it clear. A weekly prototype
-needs a paragraph or two; an assignment needs more.
+I built the harness before any feature ([`167fe40...1871a0e`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/compare/167fe40...1871a0e)): guarded hooks, a reviewer agent, a probe and a rule that Matt decides while Claude builds and verifies.
 
-Cite the record as you go, as links whose text is the commit hash or range and
-whose target is this repo's commit or compare URL, so a reader clicks straight
-to the evidence:
+**Direction.** Matt chose the problem in a grilling on [#3](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/issues/3#issuecomment-5863940083) (recorded in [`ac12c5e`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/commit/ac12c5e)):
 
-- one commit: [`a1b2c3d`](https://github.com/YOUR-ORG/YOUR-REPO/commit/a1b2c3d)
-- a range:
-  [`a1b2c3d...e4f5a6b`](https://github.com/YOUR-ORG/YOUR-REPO/compare/a1b2c3d...e4f5a6b)
+> I just want to improve the swapping feature all together
 
-To pair a prompt with the commit it produced, quote the prompt (curated, not a
-full transcript) next to the citation:
+He settled the slices' behaviours as decision records committed before the first code ([`ac12c5e...2eb36e0`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/compare/ac12c5e...2eb36e0); first schema and code [`80bd5e3`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/commit/80bd5e3)), and ruled out automatic matching ([`6072a96`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/commit/6072a96)). Later changes were settled with him as records too, after the app existed: the transit-board look ([`cd3d9ef...773b639`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/compare/cd3d9ef...773b639)) and the eighth demo student (0059, in [`f410757`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/commit/f410757)).
 
-> the prompt, verbatim
+**Grounding.** The classes are the course's published data ([`9871322`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/commit/9871322)), credited in the README ([`be293f8`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/commit/be293f8)). Each slice then landed as schema, code and spec tests, for example posts ([`388ec43`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/commit/388ec43)) and their tests ([`e0d5456`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/commit/e0d5456)).
 
-Screenshots are welcome where one carries the point better than a sentence does.
-Commit the file to this repo and link it with a **relative** path, which is what
-makes it render on GitHub: `![alt text](docs/before.png)`. Images don't count
-towards the word count and don't replace the citation.
+**Correction.** The reviewer found an open redirect that the tests missed, and the first deploy probe found `/api/events` behind the login ([`cb40d67`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/commit/cb40d67), [`93adebb`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/commit/93adebb); [handoff on #16](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/issues/16#issuecomment-5880699111)). Intermittent test failures were filed as harness issues and fixed at the cause: geometry reads racing the live board ([#41](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/issues/41), [`ce3e018`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/commit/ce3e018)) and axe runs sharing a server under load ([#43](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/issues/43), [`e5990e1`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/commit/e5990e1)). The last review found the login page's demo lines matching names case-exactly ([`f7f0941`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/commit/f7f0941); [handoff on #44](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-mattxreynolds/issues/44#issuecomment-5892086508)).
 
-## Before you ship
-
-`pnpm check:evidence` verifies that this comment is gone, that your citations
-resolve to real commits, that a crit week's reflection entry is in
-`reflections/`, and that your `CLAUDE.md` is there. It checks that your account
-is traceable, not that it is good: that is the marker's call.
-
-Images aren't checked: unlike a citation whose SHA doesn't resolve, a broken
-image is visible the moment this file is rendered on GitHub.
+**Verified.** That #44 handoff records 563 passing tests, 42 passing browser tests and a passing live probe, with screenshots in the comment after it.
