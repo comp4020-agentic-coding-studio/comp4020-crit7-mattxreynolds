@@ -31,8 +31,11 @@ function demoLine(name: string): string {
 }
 ---
 
-<div class="auth-page">
-  <h1>Log in</h1>
+<div class="auth-page auth-redesign login-page">
+  <div class="auth-heading">
+    <span class="course-label">COMP4020</span>
+    <h1>Log in</h1>
+  </div>
   <p class="tagline">Post the class you're leaving, see who'd swap, and agree it together.</p>
   <section class="auth-card">
     <h2>Username and password</h2>
@@ -43,9 +46,11 @@ function demoLine(name: string): string {
       <input id="username" name="username" required autocomplete="username" />
       <label for="password">Password</label>
       <input id="password" name="password" type="password" required autocomplete="current-password" />
-      <button class="button primary">Log in</button>
+      <div class="auth-actions">
+        <button class="button primary">Log in</button>
+        <a class="auth-switch" href={`/signup/?next=${encodeURIComponent(next)}`}>Sign up instead</a>
+      </div>
     </form>
-    <p><a href={`/signup/?next=${encodeURIComponent(next)}`}>Sign up instead</a></p>
   </section>
 
   <section class="auth-card">
@@ -62,7 +67,7 @@ function demoLine(name: string): string {
             </form>
             {choice !== RANDOM_DEMO && (
               <span class="demo-line">
-                {choice}: {demoLine(choice)}
+                <span class="visually-hidden">{choice}: </span>{demoLine(choice)}
               </span>
             )}
           </li>

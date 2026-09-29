@@ -4,14 +4,20 @@
 import * as readme from "../../README.md";
 import Layout from "../layouts/Layout.astro";
 
-const title = readme.getHeadings().find((h) => h.depth === 1)?.text ?? "README";
-
 // README images are committed to public/ and linked relatively (public/x.png)
 // so they render on GitHub; here they're served from the site root.
-const html = (await readme.compiledContent()).replace(/(src|href)="public\//g, '$1="/');
+const html = (await readme.compiledContent())
+  .replace(/(src|href)="public\//g, '$1="/')
+  .replace(/<h2([^>]*)>([\s\S]*?)<\/h2>/g, '<h3$1>$2</h3>')
+  .replace(/<h1([^>]*)>([\s\S]*?)<\/h1>/, '<h2 class="readme-document-title"$1>$2</h2>');
 ---
 
-<Layout title={title} student={Astro.locals.student}>
-  <article class="readme-page" set:html={html} />
+<Layout title="About" student={Astro.locals.student}>
+  <div class="about-page">
+    <div class="about-heading">
+      <span class="course-label">COMP4020</span>
+      <h1>About</h1>
+    </div>
+    <article class="readme-page" set:html={html} />
+  </div>
 </Layout>
-

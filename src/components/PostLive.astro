@@ -19,8 +19,8 @@ interface Props {
 // The post page's live part (0044, 0057): the one render path for /posts/N/
 // and for the refetch at /fragments/posts/N/. Three parts, in the order the
 // page stacks them at 390px: the header (the exchange row, the status
-// sentences, the message, status, times and pending-offer count), the side
-// column of actions, then the comment thread (0026, 0029). The poster sees each
+// sentences, the message, status, times, pending-offer count and own-post
+// controls), the offers column, then the comment thread (0026, 0029). The poster sees each
 // pending offer and who made it, an offerer sees their own offer and its
 // status, anyone else sees only the count (0023). The count and the poster's
 // Offers are the attention colour while an offer is pending (0058). The thread
@@ -50,12 +50,16 @@ const canOffer =
 // the count and the poster's Offers are the attention colour while an offer
 // waits on the poster (0058)
 const attention = isPoster && post.status === "open" && post.pendingOffers >= 1;
-// no actions, no side column: the comments take the whole width
-const hasActions = pendingOffers.length > 0 || ownOffer !== null || canOffer || (isPoster && post.status === "open");
+// no offer panel: the comments take the whole width
+const hasOfferPanel = isPoster || ownOffer !== null || canOffer;
 const STATUS_LABEL: Record<string, string> = { open: "Open", withdrawn: "Withdrawn", swapped: "Swapped" };
 ---
 
 <div class="post-header">
+  <p class="status-line">
+    <span class="exchange-label">Status</span>
+    <span class="post-status">{STATUS_LABEL[post.status]}</span>
+  </p>
   <ExchangeRow leaving={post.leaving} joins={post.joins} large />
   {
     post.status === "withdrawn" && post.withdrawnAt && (
@@ -93,11 +97,7 @@ const STATUS_LABEL: Record<string, string> = { open: "Open", withdrawn: "Withdra
       </p>
     )
   }
-  <p class="status-line">
-    <span class="exchange-label">Status</span>
-    <span class="post-status">{STATUS_LABEL[post.status]}</span>
-  </p>
-  <p class="message">{post.message ?? "No message"}</p>
+  <p class:list={["message", { "no-message": post.message === null }]}>{post.message ?? "No message"}</p>
   <dl class="post-facts">
     <dt>Posted</dt>
     <dd>
@@ -117,40 +117,50 @@ const STATUS_LABEL: Record<string, string> = { open: "Open", withdrawn: "Withdra
   {
     post.status === "open" && (
       <p class="offer-count" data-attention={attention ? "" : undefined}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m2 12 4-4 4 2 3-1 3 3 4-1 2 3-5 5-3-1-3 2-4-2-3-2Z"/><path d="m8 11 4 4m0-6 5 5"/></svg>
         {countLabel(post.pendingOffers)}
       </p>
     )
   }
+  {isPoster && post.status === "open" && (
+    <div class="post-header-actions">
+      <PostControls postId={post.id} next={pageUrl} />
+    </div>
+  )}
 </div>
 {
-  hasActions && (
+  hasOfferPanel && (
     <div class="side-column">
-      {pendingOffers.length > 0 && (
+      {isPoster && (
         <section aria-labelledby="offers">
-          <h2 id="offers" data-attention>
+          <h2 id="offers" data-attention={attention ? "" : undefined}>
             Offers
           </h2>
-          <ul class="offers" data-attention>
-            {pendingOffers.map((offer) => (
-              <li>
-                <span class="offer-who">
-                  <span class="offer-text">
-                    <strong>{offer.offerer}</strong> would leave <span class="class">{classLabel(offer.offered)}</span>
+          {pendingOffers.length > 0 ? (
+            <ul class="offers" data-attention={attention ? "" : undefined}>
+              {pendingOffers.map((offer) => (
+                <li>
+                  <span class="offer-who">
+                    <span class="offer-text">
+                      <strong>{offer.offerer}</strong> would leave <span class="class">{classLabel(offer.offered)}</span>
+                    </span>
+                    {isOther(offer.offerer) && <MessageLink username={offer.offerer} />}
                   </span>
-                  {isOther(offer.offerer) && <MessageLink username={offer.offerer} />}
-                </span>
-                <div class="controls">
-                  <a class="button primary" href={`/offers/${offer.id}/accept/`}>
-                    Accept
-                  </a>
-                  <form method="post" action={`/offers/${offer.id}/decline`}>
-                    <input type="hidden" name="next" value={pageUrl} />
-                    <button class="button secondary">Decline</button>
-                  </form>
-                </div>
-              </li>
-            ))}
-          </ul>
+                  <div class="controls">
+                    <a class="button primary" href={`/offers/${offer.id}/accept/`}>
+                      Accept
+                    </a>
+                    <form method="post" action={`/offers/${offer.id}/decline`}>
+                      <input type="hidden" name="next" value={pageUrl} />
+                      <button class="button secondary">Decline</button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p class="no-offers">{post.status === "open" ? "No offers yet." : "No pending offers."}</p>
+          )}
         </section>
       )}
       {ownOffer && (
@@ -174,7 +184,6 @@ const STATUS_LABEL: Record<string, string> = { open: "Open", withdrawn: "Withdra
           <button class="button primary">Offer to swap</button>
         </form>
       )}
-      {isPoster && post.status === "open" && <PostControls postId={post.id} next={pageUrl} />}
     </div>
   )
 }

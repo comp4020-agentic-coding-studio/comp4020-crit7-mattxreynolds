@@ -52,24 +52,27 @@ if (!post) {
 ---
 
 <Layout title="Edit your swap post" student={student}>
-  <div class="form-page">
-  <h1>Edit your swap post</h1>
-  {error && !blocked && <p role="alert" data-attention>{error}</p>}
-  {
-    blocked ? (
-      <p role="alert" data-attention>
-        {blocked}
-        {post && post.studentId === student.id && (
-          <>
-            {" "}
-            <a href={`/posts/${post.id}/`}>View the post</a>.
-          </>
-        )}
-      </p>
-    ) : (
-      <PostForm action={`/posts/${post?.id}/edit/`} classes={classes} leaving={leaving} joins={joins} message={message} submitLabel="Save changes" />
-    )
-  }
-  <p class="back-link"><a href="/">Back to the board</a></p>
+  <div class="form-page swap-form-page edit-post-page">
+    <a class="post-back" href="/"><span aria-hidden="true">←</span> Back to the board</a>
+    <div class="swap-form-heading">
+      <span class="course-label">COMP4020</span>
+      <h1>Edit your swap post</h1>
+    </div>
+    {error && !blocked && <p role="alert" data-attention>{error}</p>}
+    {
+      blocked ? (
+        <p role="alert" data-attention>
+          {blocked}
+          {post && post.studentId === student.id && (
+            <>
+              {" "}
+              <a href={`/posts/${post.id}/`}>View the post</a>.
+            </>
+          )}
+        </p>
+      ) : (
+        <PostForm action={`/posts/${post?.id}/edit/`} classes={classes} leaving={leaving} joins={joins} message={message} submitLabel="Save changes" />
+      )
+    }
   </div>
 </Layout>

@@ -2,6 +2,7 @@
 import PostLive from "../../components/PostLive.astro";
 import Layout from "../../layouts/Layout.astro";
 import { COMMENT_MAX } from "../../lib/comments";
+import NotFound from "../../components/NotFound.astro";
 import { getPost } from "../../lib/posts";
 
 // The post page (0020): the whole post, edited marker included (0018). A
@@ -22,8 +23,12 @@ if (!post) Astro.response.status = 404;
 <Layout title={post ? `Swap post by ${post.username}` : "Swap post not found"} student={student}>
   {
     post ? (
-      <>
-        <h1>Swap post by {post.username}</h1>
+      <div class="post-page">
+        <a class="post-back" href="/"><span aria-hidden="true">←</span> Back to the board</a>
+        <div class="post-heading">
+          <span class="course-label">COMP4020</span>
+          <h1>Swap post by {post.username}</h1>
+        </div>
         <div class="post-split">
           <div id="post-live" data-live-url={`/fragments/posts/${post.id}/`} data-post-id={post.id}>
             <PostLive post={post} student={student} />
@@ -37,17 +42,9 @@ if (!post) Astro.response.status = 404;
             </form>
           )}
         </div>
-        <p>
-          <a href="/">Back to the board</a>
-        </p>
-      </>
+      </div>
     ) : (
-      <>
-        <h1>Swap post not found</h1>
-        <p>
-          There is no swap post with that number. <a href="/">Back to the board</a>
-        </p>
-      </>
+      <NotFound heading="Swap post not found">There is no swap post with that number.</NotFound>
     )
   }
 </Layout>

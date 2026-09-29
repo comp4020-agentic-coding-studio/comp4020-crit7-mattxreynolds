@@ -35,19 +35,21 @@ if (Astro.request.method === "POST") {
 ---
 
 <Layout title="Post a swap" student={student}>
-  <div class="form-page">
-  <h1>Post a swap</h1>
-  {error && <p role="alert" data-attention>{error}</p>}
-  {
-    existingPostId !== null ? (
-      <p>
-        You already have an open post: <a href={`/posts/${existingPostId}/`}>view your post</a>.
-      </p>
-    ) : (
-      <PostForm action="/posts/new/" classes={classes} leaving={leaving} joins={joins} message={message} submitLabel="Post swap" />
-    )
-  }
-  <p class="back-link"><a href="/">Back to the board</a></p>
+  <div class="form-page swap-form-page new-post-page">
+    <a class="post-back" href="/"><span aria-hidden="true">←</span> Back to the board</a>
+    <div class="swap-form-heading">
+      <span class="course-label">COMP4020</span>
+      <h1>Post a swap</h1>
+    </div>
+    {error && <p role="alert" data-attention>{error}</p>}
+    {
+      existingPostId !== null ? (
+        <p class="existing-post">
+          You already have an open post: <a href={`/posts/${existingPostId}/`}>view your post</a>.
+        </p>
+      ) : (
+        <PostForm action="/posts/new/" classes={classes} leaving={leaving} joins={joins} message={message} submitLabel="Post swap" />
+      )
+    }
   </div>
 </Layout>
-

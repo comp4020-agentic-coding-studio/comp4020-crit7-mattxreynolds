@@ -15,14 +15,20 @@ const student = Astro.locals.student;
 const notice = student ? takeFlash(Astro.cookies) : null;
 ---
 
-<Layout title={student ? "Board" : "Log in"} student={student}>
+<Layout title={student ? "Agentic Coding Studio | Swap Board" : "Log in"} student={student}>
   {
     student ? (
       <>
-        <h1>Board</h1>
-        <p>
-          Logged in as <strong>{student.username}</strong>.
-        </p>
+        <div class="board-heading">
+          <div class="board-heading-main">
+            <span class="course-label">COMP4020</span>
+            <h1>Agentic Coding Studio</h1>
+          </div>
+          <div class="board-heading-detail" aria-label="Same classes, different paths. Students swap progress together.">
+            <span>Same<br />classes<br />different<br />paths</span>
+            <span>Students<br />swap<br />progress<br />together</span>
+          </div>
+        </div>
         {notice && <p role="status">{notice}</p>}
         <div id="board-live" data-live-url="/fragments/board/">
           <BoardContent student={student} />

@@ -47,41 +47,44 @@ if (!view) {
 ---
 
 <Layout title="Accept this offer?" student={student}>
-  <div class="form-page">
-  <h1>Accept this offer?</h1>
-  {error && !blocked && <p role="alert" data-attention>{error}</p>}
-  {
-    blocked || !view ? (
-      <p role="alert" data-attention>
-        {blocked}
-        {view && view.posterId === student.id && (
-          <>
-            {" "}
-            <a href={`/posts/${view.postId}/`}>Back to the post</a>.
-          </>
-        )}
-      </p>
-    ) : (
-      <section class="form-card accept-card">
-        <p class="swap-summary">
-          <strong>{view.offerer}</strong> would leave <span class="class">{classLabel(view.offered)}</span> and take your
-          place in <span class="class">{classLabel(view.leaving)}</span>. You would move to{" "}
-          <span class="class">{classLabel(view.offered)}</span>.
+  <div class="form-page accept-page">
+    <a class="post-back" href="/"><span aria-hidden="true">←</span> Back to the board</a>
+    <div class="accept-heading">
+      <span class="course-label">COMP4020</span>
+      <h1>Accept this offer?</h1>
+    </div>
+    {error && !blocked && <p role="alert" data-attention>{error}</p>}
+    {
+      blocked || !view ? (
+        <p role="alert" data-attention>
+          {blocked}
+          {view && view.posterId === student.id && (
+            <>
+              {" "}
+              <a href={`/posts/${view.postId}/`}>Back to the post</a>.
+            </>
+          )}
         </p>
-        <p class="final">
-          <strong>Accepting is final.</strong> There is no undo. Your post becomes swapped and leaves the board. It also
-          closes the other pending offers on it, every other pending offer you or {view.offerer} have made, and{" "}
-          {view.offerer}'s own open post if they have one.
-        </p>
-        <p>This app can't change your timetable. After accepting, make the change in MyTimetable.</p>
-        <form method="post" action={`/offers/${view.id}/accept/`} class="controls">
-          <input type="hidden" name="confirm" value="yes" />
-          <button class="button primary">Accept the swap</button>
-          <a href={`/posts/${view.postId}/`}>Cancel</a>
-        </form>
-      </section>
-    )
-  }
-  <p class="back-link"><a href="/">Back to the board</a></p>
+      ) : (
+        <section class="form-card accept-card">
+          <p class="swap-summary">
+            <strong>{view.offerer}</strong> would leave <span class="class">{classLabel(view.offered)}</span> and take your
+            place in <span class="class">{classLabel(view.leaving)}</span>. You would move to{" "}
+            <span class="class">{classLabel(view.offered)}</span>.
+          </p>
+          <p class="final">
+            <strong>Accepting is final.</strong> There is no undo. Your post becomes swapped and leaves the board. It also
+            closes the other pending offers on it, every other pending offer you or {view.offerer} have made, and{" "}
+            {view.offerer}'s own open post if they have one.
+          </p>
+          <p class="accept-note">This app can't change your timetable. After accepting, make the change in MyTimetable.</p>
+          <form method="post" action={`/offers/${view.id}/accept/`} class="controls">
+            <input type="hidden" name="confirm" value="yes" />
+            <button class="button primary">Accept the swap</button>
+            <a class="button secondary" href={`/posts/${view.postId}/`}>Cancel</a>
+          </form>
+        </section>
+      )
+    }
   </div>
 </Layout>

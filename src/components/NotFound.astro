@@ -1,0 +1,17 @@
+---
+// The "not found" body every missing page shares (a post, a conversation, a
+// mistyped address): the same back link and cyan-bar heading as the other pages.
+interface Props {
+  heading: string;
+}
+const { heading } = Astro.props;
+---
+
+<div class="post-page not-found-page">
+  <a class="post-back" href="/"><span aria-hidden="true">←</span> Back to the board</a>
+  <div class="post-heading">
+    <span class="course-label">COMP4020</span>
+    <h1>{heading}</h1>
+  </div>
+  <p class="not-found-note"><slot /></p>
+</div>

@@ -3,8 +3,8 @@ import { boardMessage, type PostView } from "../lib/posts";
 import { commentCountLabel } from "../lib/comments";
 import { countLabel } from "../lib/offers";
 import { formatCanberra } from "../lib/time";
+import { classLabel } from "../lib/classes";
 
-import ExchangeRow from "./ExchangeRow.astro";
 import PostControls from "./PostControls.astro";
 
 interface Props {
@@ -23,27 +23,31 @@ const message = boardMessage(post.message);
 const attention = own && post.pendingOffers >= 1;
 ---
 
-<article class="post">
-  <h3>{post.username}</h3>
-  <ExchangeRow leaving={post.leaving} joins={post.joins} />
-  {message !== null && <p class="message">{message}</p>}
-  <p class="meta">
-    Posted <time datetime={post.postedAt.toISOString()}>{formatCanberra(post.postedAt)}</time> ·{" "}
-    {
-      post.editedAt && (
-        <>
-          <span class="edited">
-            Edited <time datetime={post.editedAt.toISOString()}>{formatCanberra(post.editedAt)}</time>
-          </span>{" "}
-          ·{" "}
-        </>
-      )
-    }
-    <a href={`/posts/${post.id}/`}>View post</a>
-  </p>
-  <p class="offer-count" data-attention={attention ? "" : undefined}>
-    {own ? <a href={`/posts/${post.id}/`}>{countLabel(post.pendingOffers)}</a> : countLabel(post.pendingOffers)}
-  </p>
-  <p class="comment-count">{commentCountLabel(post.comments)}</p>
-  {own && <PostControls postId={post.id} next="/" />}
+<article class:list={["board-post", { "board-post-own": own }]}>
+  <div class="board-post-main">
+  {!own && <h3><svg class="post-user-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3.5"/><path d="M4.5 20c0-4.2 3-7 7.5-7s7.5 2.8 7.5 7"/></svg>{post.username}</h3>}
+  <div class="swap-exchange">
+    <div class="swap-giving">
+      <span class="exchange-label">Giving</span>
+      <span class="class">{classLabel(post.leaving)}</span>
+    </div>
+    {!own && <span class="swap-arrow" aria-hidden="true">→</span>}
+    <div class="swap-looking">
+      <span class="exchange-label">Looking for</span>
+      <ul class:list={["swap-times", { "many-times": post.joins.length >= 4 }]}>
+        {post.joins.map((join) => <li>{classLabel(join)}</li>)}
+      </ul>
+    </div>
+  </div>
+  </div>
+  {!own && message !== null && <p class="message public-message">{message}</p>}
+  <div class="board-post-footer">
+    <span class="board-count comment-count"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a8.5 8.5 0 0 1-12.2 7.65L3 21l1.85-4.8A8.5 8.5 0 1 1 20 11.5Z"/></svg>{commentCountLabel(post.comments)}</span>
+    <span class="board-count offer-count" data-attention={attention ? "" : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m2 12 4-4 4 2 3-1 3 3 4-1 2 3-5 5-3-1-3 2-4-2-3-2Z"/><path d="m8 11 4 4m0-6 5 5"/></svg>{own ? <a href={`/posts/${post.id}/`}>{countLabel(post.pendingOffers)}</a> : countLabel(post.pendingOffers)}</span>
+    <div class="board-post-actions">
+      {own && <PostControls postId={post.id} next="/" />}
+      <a class="view-post" href={`/posts/${post.id}/`}>View post <span aria-hidden="true">→</span></a>
+    </div>
+  </div>
+  <span class="visually-hidden">Posted <time datetime={post.postedAt.toISOString()}>{formatCanberra(post.postedAt)}</time>{post.editedAt && <>; edited <time datetime={post.editedAt.toISOString()}>{formatCanberra(post.editedAt)}</time></>}</span>
 </article>

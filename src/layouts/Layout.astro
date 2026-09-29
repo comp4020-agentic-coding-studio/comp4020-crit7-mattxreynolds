@@ -12,6 +12,7 @@ interface Props {
 const { title, student } = Astro.props;
 // the header count (0033): read when the page renders, so it moves on reload only
 const unread = student ? unreadCount(student.id) : 0;
+const currentPath = Astro.url.pathname;
 ---
 
 <!doctype html>
@@ -23,25 +24,39 @@ const unread = student ? unreadCount(student.id) : 0;
   </head>
   <body>
     <header class="site-header">
+      <div class="header-inner">
       <span class="wordmark">Swap Board</span>
-      <nav aria-label="site">
-        {student && <a href="/">Board</a>}
+      <button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="site-navigation">
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="site-navigation" aria-label="site">
+        {student && <a href="/" aria-current={currentPath === "/" ? "page" : currentPath.startsWith("/posts/") ? "location" : undefined}>Board</a>}
         {
           student && (
-            <a href="/messages/" data-attention={unread > 0 ? "" : undefined}>
+            <a href="/messages/" aria-current={currentPath.startsWith("/messages/") ? "page" : undefined} data-attention={unread > 0 ? "" : undefined}>
               {unread > 0 ? `Messages (${unread})` : "Messages"}
             </a>
           )
         }
-        <a href="/readme/">About</a>
+        <a href="/readme/" aria-current={currentPath === "/readme/" ? "page" : undefined}>About</a>
         {
           student && (
-            <form method="post" action="/logout">
-              <button class="button secondary">Log out</button>
-            </form>
+            <div class="nav-account">
+              <button class="account-toggle" type="button" aria-expanded="false" aria-controls="account-menu">
+                <span class="user-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="currentColor"><circle cx="16" cy="10" r="5"/><path d="M6 27c0-6 4-10 10-10s10 4 10 10z"/></svg></span>
+                <span class="nav-username">{student.username}</span>
+                <span class="account-chevron" aria-hidden="true"></span>
+              </button>
+              <div class="account-menu" id="account-menu" hidden>
+                <form method="post" action="/logout">
+                  <button type="submit">Log out</button>
+                </form>
+              </div>
+            </div>
           )
         }
       </nav>
+      </div>
     </header>
     <main>
       <slot />
@@ -51,3 +66,55 @@ const unread = student ? unreadCount(student.id) : 0;
     </footer>
   </body>
 </html>
+
+<script>
+  const header = document.querySelector<HTMLElement>(".site-header");
+  const toggle = header?.querySelector<HTMLButtonElement>(".menu-toggle");
+  const nav = header?.querySelector<HTMLElement>("#site-navigation");
+  const account = header?.querySelector<HTMLElement>(".nav-account");
+  const accountToggle = account?.querySelector<HTMLButtonElement>(".account-toggle");
+  const accountMenu = account?.querySelector<HTMLElement>(".account-menu");
+  const closeAccount = () => {
+    if (accountToggle && accountMenu) {
+      accountToggle.setAttribute("aria-expanded", "false");
+      accountMenu.hidden = true;
+    }
+  };
+  accountToggle?.addEventListener("click", () => {
+    if (!accountMenu) return;
+    const open = accountMenu.hidden;
+    accountMenu.hidden = !open;
+    accountToggle.setAttribute("aria-expanded", String(open));
+  });
+  if (header && toggle && nav) {
+    const close = () => {
+      closeAccount();
+      header.classList.remove("menu-open");
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-label", "Open menu");
+    };
+    toggle.addEventListener("click", () => {
+      const open = toggle.getAttribute("aria-expanded") !== "true";
+      header.classList.toggle("menu-open", open);
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    });
+    nav.querySelectorAll("a").forEach((link) => link.addEventListener("click", close));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && accountMenu && !accountMenu.hidden) {
+        closeAccount();
+        accountToggle?.focus();
+        return;
+      }
+      if (event.key === "Escape" && header.classList.contains("menu-open")) {
+        close();
+        toggle.focus();
+      }
+    });
+    document.addEventListener("pointerdown", (event) => {
+      if (event.target instanceof Node && account && !account.contains(event.target)) closeAccount();
+      if (event.target instanceof Node && !header.contains(event.target)) close();
+    });
+    window.matchMedia("(min-width: 48rem)").addEventListener("change", close);
+  }
+</script>

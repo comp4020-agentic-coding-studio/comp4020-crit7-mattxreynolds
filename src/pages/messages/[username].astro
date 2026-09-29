@@ -1,4 +1,5 @@
 ---
+import NotFound from "../../components/NotFound.astro";
 import Conversation from "../../components/Conversation.astro";
 import Layout from "../../layouts/Layout.astro";
 import { conversationPartner, markConversationRead, PRIVATE_MESSAGE_MAX } from "../../lib/privateMessages";
@@ -19,8 +20,12 @@ if (student && other) markConversationRead(student.id, other);
 <Layout title={other ? `Conversation with ${other.username}` : "Conversation not found"} student={student}>
   {
     student && other ? (
-      <div class="messages-page">
-        <h1>Conversation with {other.username}</h1>
+      <div class="messages-page messages-conversation">
+        <a class="post-back" href="/messages/"><span aria-hidden="true">←</span> Back to messages</a>
+        <div class="conversation-heading">
+          <span class="course-label">COMP4020</span>
+          <h1>Conversation with {other.username}</h1>
+        </div>
         <div id="conversation-live" data-live-url={`/fragments/messages/${encodeURIComponent(other.username)}/`}>
           <Conversation student={student} other={other} />
         </div>
@@ -31,17 +36,9 @@ if (student && other) markConversationRead(student.id, other);
           <textarea id="private-message-body" name="body" rows="3" maxlength={PRIVATE_MESSAGE_MAX} required />
           <button class="button primary">Send</button>
         </form>
-        <p class="back-link">
-          <a href="/">Back to the board</a>
-        </p>
       </div>
     ) : (
-      <>
-        <h1>Conversation not found</h1>
-        <p>
-          There is no student to message at that address. <a href="/">Back to the board</a>
-        </p>
-      </>
+      <NotFound heading="Conversation not found">There is no student to message at that address.</NotFound>
     )
   }
 </Layout>

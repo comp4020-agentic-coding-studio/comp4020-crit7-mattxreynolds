@@ -11,8 +11,12 @@ const rows = student ? inboxFor(student.id) : [];
 ---
 
 <Layout title="Messages" student={student}>
-  <div class="messages-page">
-    <h1>Messages</h1>
+  <div class="messages-page messages-inbox">
+    <a class="post-back" href="/"><span aria-hidden="true">←</span> Back to the board</a>
+    <div class="inbox-heading">
+      <span class="course-label">COMP4020</span>
+      <h1>Messages</h1>
+    </div>
     {
       rows.length === 0 ? (
         <p class="no-conversations">
@@ -24,17 +28,16 @@ const rows = student ? inboxFor(student.id) : [];
           {rows.map((row) => (
             <li class={row.unread ? "conversation unread" : "conversation"} data-attention={row.unread ? "" : undefined}>
               <a href={`/messages/${encodeURIComponent(row.username)}/`}>
+                <span class="conversation-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="3.5"/><path d="M4.5 20c0-4.2 3-7 7.5-7s7.5 2.8 7.5 7"/></svg></span>
                 <span class="conversation-with">{row.username}</span>
                 <time datetime={row.at.toISOString()}>{formatCanberra(row.at)}</time>
                 <span class="conversation-preview">{row.preview}</span>
+                <span class="conversation-arrow" aria-hidden="true">→</span>
               </a>
             </li>
           ))}
         </ul>
       )
     }
-    <p class="back-link">
-      <a href="/">Back to the board</a>
-    </p>
   </div>
 </Layout>

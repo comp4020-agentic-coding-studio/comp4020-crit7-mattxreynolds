@@ -14,21 +14,16 @@ interface Props {
 const { leaving, joins, large = false } = Astro.props;
 ---
 
-<p class:list={["exchange", { large }]}>
-  <span class="giving">
+<div class:list={["swap-exchange", "post-exchange", { large }]}>
+  <div class="swap-giving">
     <span class="exchange-label">Giving</span>
     <span class="class">{classLabel(leaving)}</span>
-  </span>
-  <span class="exchange-arrow" aria-hidden="true">→</span>
-  <span class="looking-for">
+  </div>
+  <span class="swap-arrow" aria-hidden="true">→</span>
+  <div class="swap-looking">
     <span class="exchange-label">Looking for</span>
-    {
-      joins.map((c, i) => (
-        <>
-          {i > 0 && ", "}
-          <span class="class">{classLabel(c)}</span>
-        </>
-      ))
-    }
-  </span>
-</p>
+    <ul class:list={["swap-times", { "many-times": joins.length >= 4 }]}>
+      {joins.map((join) => <li class="class">{classLabel(join)}</li>)}
+    </ul>
+  </div>
+</div>

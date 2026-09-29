@@ -2,7 +2,7 @@
 import OwnOffer from "./OwnOffer.astro";
 import PostEntry from "./PostEntry.astro";
 import { offersMadeBy } from "../lib/offer-store";
-import { listOpenPosts, swappedPostIdFor } from "../lib/posts";
+import { boardMessage, listOpenPosts, swappedPostIdFor } from "../lib/posts";
 import type { Student } from "../lib/schema";
 
 interface Props {
@@ -28,7 +28,9 @@ const madeOffers = offersMadeBy(student.id);
 <div class="board-split">
   <div class="side-column">
     <section aria-labelledby="your-post">
-      <h2 id="your-post">Your post</h2>
+      <h2 id="your-post">Your swap</h2>
+      <div class="your-swap-panel">
+      {mine && mine.message !== null && <p class="your-swap-message message">{boardMessage(mine.message)}</p>}
       {mine ? <PostEntry post={mine} own /> : <a class="button primary" href="/posts/new/">Post a swap</a>}
       {
         swappedPostId !== null && (
@@ -37,6 +39,7 @@ const madeOffers = offersMadeBy(student.id);
           </p>
         )
       }
+      </div>
     </section>
     {
       madeOffers.length > 0 && (
@@ -55,7 +58,7 @@ const madeOffers = offersMadeBy(student.id);
   </div>
   <div class="main-column">
     <section aria-labelledby="open-posts">
-      <h2 id="open-posts">Open posts</h2>
+      <h2 id="open-posts">Open swaps</h2>
       {others.length === 0 ? <p>No other open swap posts.</p> : others.map((post) => <PostEntry post={post} />)}
     </section>
   </div>
