@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
+import { commentCounts } from "./comments";
 import { db } from "./db";
 import { publishPostChanged } from "./events";
 import { closePendingOffers, hasPendingOffers, pendingOfferCounts } from "./offer-store";
@@ -23,6 +24,8 @@ export interface PostView {
   withdrawnBy: number | null;
   // offers still waiting for the poster (0023): the one count everyone sees
   pendingOffers: number;
+  // comments not deleted (0028): the board's "N comments"
+  comments: number;
 }
 
 export interface NewPost {
@@ -234,12 +237,13 @@ export function withdrawPost(studentId: number, postId: number): WithdrawPostRes
   return { ok: true };
 }
 
-type PostRow = Omit<PostView, "leaving" | "joins" | "pendingOffers"> & { leavingClassId: string };
+type PostRow = Omit<PostView, "leaving" | "joins" | "pendingOffers" | "comments"> & { leavingClassId: string };
 
 function toViews(rows: PostRow[]): PostView[] {
   if (rows.length === 0) return [];
   const classById = new Map(allClasses().map((c) => [c.id, c]));
   const pending = pendingOfferCounts(rows.map((r) => r.id));
+  const commented = commentCounts(rows.map((r) => r.id));
   const joinRows = db
     .select()
     .from(swapPostJoinClasses)
@@ -253,7 +257,7 @@ function toViews(rows: PostRow[]): PostView[] {
       .sort((a, b) => a.position - b.position);
     const leaving = classById.get(row.leavingClassId);
     if (!leaving) throw new Error(`post ${row.id} names an unknown class`);
-    return { ...row, leaving, joins, pendingOffers: pending.get(row.id) ?? 0 };
+    return { ...row, leaving, joins, pendingOffers: pending.get(row.id) ?? 0, comments: commented.get(row.id) ?? 0 };
   });
 }
 

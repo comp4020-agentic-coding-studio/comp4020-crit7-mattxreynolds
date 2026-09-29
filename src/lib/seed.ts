@@ -2,11 +2,11 @@ import { inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { CLASSES, type ClassId } from "./classes";
 import { hashPassword } from "./password";
-import { classes, offers, students, swapPostJoinClasses, swapPosts } from "./schema";
+import { classes, comments, offers, students, swapPostJoinClasses, swapPosts } from "./schema";
 
 // The demo students (0014, 0037): first-name usernames sharing one published
-// password, and the posts and offers written for them (0038). Later slices add
-// comments and private messages beside these rows.
+// password, and the posts, offers and comments written for them (0038). A later slice adds private
+// messages beside these rows.
 export const DEMO_USERNAMES = ["alex", "priya", "sam", "lena", "jordan", "mei", "noah"] as const;
 export const DEMO_PASSWORD = "demo-student";
 
@@ -42,6 +42,14 @@ const DEMO_OFFERS: { offerer: string; poster: string; offered: ClassId; hoursAgo
   { offerer: "lena", poster: "priya", offered: "bada", hoursAgo: 20 },
 ];
 
+// The comments on open posts (0038), each after its post: sam asks alex a
+// question and alex, the poster, answers it (that comment carries the "poster"
+// tag).
+const DEMO_COMMENTS: { author: string; poster: string; body: string; hoursAgo: number }[] = [
+  { author: "sam", poster: "alex", body: "Would you rather have Wed 09:00 or Wed 10:30?", hoursAgo: 50 },
+  { author: "alex", poster: "alex", body: "Either is fine. It is only Mon 14:00 that clashes with my lab.", hoursAgo: 46 },
+];
+
 // jordan's swapped post (0038) and the offer mei made on it, which jordan
 // accepted: jordan moves to Wed 15:30 and mei to Wed 14:00. It is the oldest
 // thing in the seed, and the swap happened after the offer, so the
@@ -55,6 +63,9 @@ const DEMO_SWAP: {
   postedHoursAgo: number;
   offeredHoursAgo: number;
   swappedHoursAgo: number;
+  // mei's comment on the post, from before the swap (0038)
+  commentBody: string;
+  commentedHoursAgo: number;
 } = {
   poster: "jordan",
   leaving: "yunlin",
@@ -63,6 +74,8 @@ const DEMO_SWAP: {
   postedHoursAgo: 71,
   offeredHoursAgo: 65,
   swappedHoursAgo: 60,
+  commentBody: "I hold Wed 15:30 and would happily move. Offering now.",
+  commentedHoursAgo: 67,
 };
 
 // Written only when no demo student exists (0040): a fresh volume or a fresh
@@ -121,6 +134,15 @@ export function seedDemoStudents(db: BetterSQLite3Database): void {
         .run();
     }
 
+    for (const comment of DEMO_COMMENTS) {
+      const authorId = ids.get(comment.author);
+      const postId = postIds.get(comment.poster);
+      if (authorId === undefined || postId === undefined) continue;
+      tx.insert(comments)
+        .values({ postId, authorId, body: comment.body, createdAt: new Date(now - comment.hoursAgo * HOUR) })
+        .run();
+    }
+
     const posterId = ids.get(DEMO_SWAP.poster);
     const offererId = ids.get(DEMO_SWAP.offerer);
     if (posterId !== undefined && offererId !== undefined) {
@@ -135,6 +157,14 @@ export function seedDemoStudents(db: BetterSQLite3Database): void {
         .returning({ id: swapPosts.id })
         .get();
       tx.insert(swapPostJoinClasses).values({ postId: id, classId: DEMO_SWAP.join }).run();
+      tx.insert(comments)
+        .values({
+          postId: id,
+          authorId: offererId,
+          body: DEMO_SWAP.commentBody,
+          createdAt: new Date(now - DEMO_SWAP.commentedHoursAgo * HOUR),
+        })
+        .run();
       tx.insert(offers)
         .values({
           postId: id,

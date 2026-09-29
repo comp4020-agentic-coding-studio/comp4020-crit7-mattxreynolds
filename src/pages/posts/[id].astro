@@ -1,13 +1,16 @@
 ---
 import PostLive from "../../components/PostLive.astro";
 import Layout from "../../layouts/Layout.astro";
+import { COMMENT_MAX } from "../../lib/comments";
 import { getPost } from "../../lib/posts";
 
 // The post page (0020): the whole post, edited marker included (0018). A
 // withdrawn post still loads, says so with the time (and that a swap withdrew
 // it, 0024) and has no controls; a swapped one says who moved where. An id
 // that never existed is a 404. The rest is PostLive, which /fragments/posts/N/
-// renders too (0044).
+// renders too (0044). The comment box (0026) stays out of PostLive, so the live
+// refresh never swaps it and a half-typed comment survives; it is drawn only
+// for an open post.
 const student = Astro.locals.student;
 const id = /^[0-9]+$/.test(Astro.params.id ?? "") ? Number(Astro.params.id) : null;
 const post = id === null ? null : getPost(id);
@@ -22,6 +25,14 @@ if (!post) Astro.response.status = 404;
         <div id="post-live" data-live-url={`/fragments/posts/${post.id}/`} data-post-id={post.id}>
           <PostLive post={post} student={student} />
         </div>
+        {student && post.status === "open" && (
+          <form method="post" action={`/posts/${post.id}/comments`} class="comment-form">
+            <input type="hidden" name="next" value={`/posts/${post.id}/`} />
+            <label for="comment-body">Add a comment (up to {COMMENT_MAX} characters)</label>
+            <textarea id="comment-body" name="body" rows="3" maxlength={COMMENT_MAX} required />
+            <button>Comment</button>
+          </form>
+        )}
         <p>
           <a href="/">Back to the board</a>
         </p>

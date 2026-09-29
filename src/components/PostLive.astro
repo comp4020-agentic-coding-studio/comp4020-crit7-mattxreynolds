@@ -2,6 +2,7 @@
 import OwnOffer from "./OwnOffer.astro";
 import PostControls from "./PostControls.astro";
 import { classLabel } from "../lib/classes";
+import { commentsOn } from "../lib/comments";
 import { acceptedSwapOn, declinedOfferOn, ownOfferOn, pendingOffersOn } from "../lib/offer-store";
 import { countLabel, swappedSentence } from "../lib/offers";
 import { withdrawnBySwap, type PostView } from "../lib/posts";
@@ -17,11 +18,16 @@ interface Props {
 // count and what this viewer sees of its offers (0023) — the one render path
 // for /posts/N/ and for the refetch at /fragments/posts/N/. The poster sees
 // each pending offer and who made it, an offerer sees their own offer and its
-// status, anyone else sees only the count. Controls that no longer apply
-// aren't rendered, so they disappear on a refresh.
+// status, anyone else sees only the count. Below it all is the comment thread
+// (0026, 0029): oldest first, a deleted comment a bare placeholder (0027), the
+// author's Delete only while the post is open. The comment box is not here: it
+// sits outside this region so a half-typed comment survives a refresh (0044).
+// Controls that no longer apply aren't rendered, so they disappear on a
+// refresh.
 const { post, student } = Astro.props;
 const isPoster = post.studentId === student?.id;
 const pageUrl = `/posts/${post.id}/`;
+const thread = commentsOn(post.id);
 const pendingOffers = isPoster ? pendingOffersOn(post.id) : [];
 const swap = post.status === "swapped" ? acceptedSwapOn(post.id) : null;
 const ownOffer = student && !isPoster ? ownOfferOn(student.id, post.id) : null;
@@ -131,3 +137,34 @@ const canOffer =
   )
 }
 {isPoster && post.status === "open" && <PostControls postId={post.id} next={pageUrl} />}
+<section aria-labelledby="comments" class="comments">
+  <h2 id="comments">Comments</h2>
+  {
+    thread.length === 0 ? (
+      <p class="no-comments">{post.status === "open" ? "No comments yet." : "No comments."}</p>
+    ) : (
+      <ul class="comment-list">
+        {thread.map((comment) =>
+          comment.deleted ? (
+            <li class="comment deleted">Comment deleted</li>
+          ) : (
+            <li class="comment">
+              <p class="comment-head">
+                <strong>{comment.author}</strong>
+                {comment.byPoster && <span class="poster-tag">poster</span>}{" "}
+                <time datetime={comment.createdAt.toISOString()}>{formatCanberra(comment.createdAt)}</time>
+              </p>
+              <p class="comment-body">{comment.body}</p>
+              {post.status === "open" && comment.authorId === student?.id && (
+                <form method="post" action={`/comments/${comment.id}/delete`}>
+                  <input type="hidden" name="next" value={pageUrl} />
+                  <button>Delete</button>
+                </form>
+              )}
+            </li>
+          ),
+        )}
+      </ul>
+    )
+  }
+</section>

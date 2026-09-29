@@ -262,3 +262,49 @@ textarea {
 #post-live:focus {
   outline: none;
 }
+
+.comment-count {
+  margin-block: 0.25rem;
+}
+
+.comment-list {
+  list-style: none;
+  padding: 0;
+}
+
+.comment {
+  margin-block: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #c8c8c8;
+  border-radius: 0.25rem;
+}
+
+.comment p {
+  margin-block: 0.25rem;
+}
+
+.comment form {
+  margin: 0;
+}
+
+.comment.deleted {
+  color: #555;
+  font-style: italic;
+}
+
+.comment-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.poster-tag {
+  margin-inline: 0.25rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid #555;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}
+
+.comment-form {
+  margin-block: 1rem;
+}

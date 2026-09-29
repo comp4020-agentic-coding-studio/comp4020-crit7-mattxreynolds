@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { int, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, int, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // The schema is the ground truth for the database. To change it: edit here,
 // run `pnpm db:generate` to turn the diff into a migration under drizzle/,
@@ -123,6 +123,27 @@ export const offers = sqliteTable(
       .on(table.postId, table.offererId)
       .where(sql`${table.status} = 'pending'`),
   ],
+);
+
+// A comment (0026, 0027): plain text on a swap post's page, in one flat
+// thread. It can't be edited; its author deletes it while the post is open,
+// which sets deleted_at and leaves the row in its place in the thread. What
+// the app renders or sends for a deleted comment carries no author or text.
+export const comments = sqliteTable(
+  "comments",
+  {
+    id: int().primaryKey({ autoIncrement: true }),
+    postId: int("post_id")
+      .notNull()
+      .references(() => swapPosts.id, { onDelete: "cascade" }),
+    authorId: int("author_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    body: text().notNull(),
+    createdAt: int("created_at", { mode: "timestamp_ms" }).notNull(),
+    deletedAt: int("deleted_at", { mode: "timestamp_ms" }),
+  },
+  (table) => [index("comments_post_idx").on(table.postId)],
 );
 
 export type Student = typeof students.$inferSelect;

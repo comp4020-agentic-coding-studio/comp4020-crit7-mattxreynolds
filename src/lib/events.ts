@@ -17,7 +17,9 @@ export type PostChangeKind =
   | "offer-made"
   | "offer-withdrawn"
   | "offer-declined"
-  | "offer-closed";
+  | "offer-closed"
+  | "comment-added"
+  | "comment-deleted";
 
 export function publishPostChanged(postId: number, kind: PostChangeKind): void {
   bus.emit("message", { type: "post-changed", postId, kind });

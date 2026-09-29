@@ -1,6 +1,7 @@
 ---
 import { boardMessage, type PostView } from "../lib/posts";
 import { classLabel } from "../lib/classes";
+import { commentCountLabel } from "../lib/comments";
 import { countLabel } from "../lib/offers";
 import { formatCanberra } from "../lib/time";
 
@@ -51,5 +52,6 @@ const message = boardMessage(post.message);
   <p class="offer-count">
     {own ? <a href={`/posts/${post.id}/`}>{countLabel(post.pendingOffers)}</a> : countLabel(post.pendingOffers)}
   </p>
+  <p class="comment-count">{commentCountLabel(post.comments)}</p>
   {own && <PostControls postId={post.id} next="/" />}
 </article>
