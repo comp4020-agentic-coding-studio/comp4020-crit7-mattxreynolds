@@ -142,7 +142,7 @@ form label {
 }
 
 /* a form error waits on the viewer: the attention style (0058) */
-[role="alert"] {
+[role="alert"][data-attention] {
   padding: 0.5rem 0.75rem;
   border-inline-start: 4px solid var(--coral);
   background: var(--coral-wash);
@@ -191,6 +191,10 @@ button,
 
 .button.secondary:hover {
   background: var(--wash);
+}
+
+.site-header nav button.button.secondary:hover {
+  background: var(--navy-soft);
 }
 
 #messages {

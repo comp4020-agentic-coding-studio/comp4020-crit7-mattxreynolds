@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 import { CLASSES } from "../src/lib/classes";
 import {
   baseUrl,
+  declineOffer,
   demoCookie,
   newStudent,
   offerIdsOn,
   ownPostId,
   page,
+  submitEdit,
   submitOffer,
   submitPost,
   text,
@@ -99,6 +101,25 @@ describe("the attention marker (0058)", () => {
     expect(alert?.hasAttribute("data-attention")).toBe(true);
   });
 
+  it("marks the edit form's and the accept step's errors too", async () => {
+    const poster = await newStudent("shellalert");
+    expect((await submitPost(poster, fields)).status).toBe(303);
+    const id = await ownPostId(poster);
+    const edit = await submitEdit(poster, id!, { message: "no classes" });
+    const editAlert = new JSDOM(await edit.text()).window.document.querySelector('[role="alert"]');
+    expect(text(editAlert)).not.toBe("");
+    expect(editAlert?.hasAttribute("data-attention")).toBe(true);
+
+    // an offer already declined can't be accepted: the confirm step says so
+    const offerer = await newStudent("shellalertoff");
+    expect((await submitOffer(offerer, id!, { class: CLASSES[2].id })).status).toBe(303);
+    const [offerId] = await offerIdsOn(poster, id!);
+    expect((await declineOffer(poster, offerId)).status).toBe(303);
+    const blocked = (await html(`/offers/${offerId}/accept/`, poster)).querySelector('[role="alert"]');
+    expect(text(blocked)).not.toBe("");
+    expect(blocked?.hasAttribute("data-attention")).toBe(true);
+  });
+
   it("leaves the board's flash notice (role=status) unmarked", async () => {
     const cookie = await newStudent("shellflash");
     const created = await submitPost(cookie, fields);
@@ -119,12 +140,14 @@ describe("the attention marker (0058)", () => {
 });
 
 describe("primary and secondary buttons (0058)", () => {
+  // one entry per matching control, "none" when it has neither style, so a
+  // control that loses its class can't hide behind a sibling that has one
   const styleOf = (doc: Document, label: string): string[] => {
     const controls = [...doc.querySelectorAll<HTMLElement>("main a, main button")].filter((el) => text(el) === label);
     expect(controls.length, `a "${label}" control`).toBeGreaterThan(0);
-    return controls.flatMap((el) => [el.classList.contains("primary") ? "primary" : "", el.classList.contains("secondary") ? "secondary" : ""]).filter(Boolean);
+    return controls.map((el) => (el.classList.contains("primary") ? "primary" : el.classList.contains("secondary") ? "secondary" : "none"));
   };
-  const only = (styles: string[], want: "primary" | "secondary") => expect(new Set(styles)).toEqual(new Set([want]));
+  const only = (styles: string[], want: "primary" | "secondary") => expect(styles.every((s) => s === want), styles.join(",")).toBe(true);
 
   it("Post a swap is primary", async () => {
     const cookie = await newStudent("shellbtn");
