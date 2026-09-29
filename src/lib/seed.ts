@@ -63,7 +63,7 @@ const DEMO_SWAP: {
   postedHoursAgo: number;
   offeredHoursAgo: number;
   swappedHoursAgo: number;
-  // mei's comment on the post, from before the swap (0038)
+  // mei's comment on the post, after her offer and before the swap (0038)
   commentBody: string;
   commentedHoursAgo: number;
 } = {
@@ -74,8 +74,8 @@ const DEMO_SWAP: {
   postedHoursAgo: 71,
   offeredHoursAgo: 65,
   swappedHoursAgo: 60,
-  commentBody: "I hold Wed 15:30 and would happily move. Offering now.",
-  commentedHoursAgo: 67,
+  commentBody: "I hold Wed 15:30 and would happily move, so I have made an offer.",
+  commentedHoursAgo: 64,
 };
 
 // Written only when no demo student exists (0040): a fresh volume or a fresh

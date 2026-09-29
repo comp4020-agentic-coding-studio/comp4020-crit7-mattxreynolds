@@ -70,6 +70,7 @@ async function thread(path: string, cookie: string) {
     body: li.querySelector(".comment-body")?.textContent ?? null,
     poster: li.querySelector(".poster-tag") !== null,
     time: li.querySelector("time")?.textContent ?? null,
+    instant: li.querySelector("time")?.getAttribute("datetime") ?? null,
     deleteAction: li.querySelector('form[action$="/delete"]')?.getAttribute("action") ?? null,
     deleted: li.classList.contains("deleted"),
   }));
@@ -123,8 +124,10 @@ describe("commenting", () => {
   it("shows the comment after a reload with its author and time, and a poster tag only on the poster's", async () => {
     const p = await poster();
     const c = await student();
+    const before = Date.now();
     expect((await submitComment(c.cookie, p.id, "Is Wed 09:00 still free?", p.path)).status).toBe(303);
     expect((await submitComment(p.cookie, p.id, "Yes it is.", p.path)).status).toBe(303);
+    const after = Date.now();
 
     for (const viewer of [c.cookie, p.cookie]) {
       const rows = await thread(p.path, viewer);
@@ -133,7 +136,13 @@ describe("commenting", () => {
         [p.username, "Yes it is.", true],
       ]);
       // "Mon 28 Sep, 14:05", Canberra time (0046)
-      for (const row of rows) expect(row.time).toMatch(/^[A-Z][a-z]{2} \d{1,2} [A-Z][a-z]{2}, \d{2}:\d{2}$/);
+      for (const row of rows) {
+        expect(row.time).toMatch(/^[A-Z][a-z]{2} \d{1,2} [A-Z][a-z]{2}, \d{2}:\d{2}$/);
+        // the instant is when it was written (the display's zone is pinned in the time spec)
+        const written = Date.parse(row.instant ?? "");
+        expect(written).toBeGreaterThanOrEqual(before);
+        expect(written).toBeLessThanOrEqual(after);
+      }
     }
   });
 
@@ -405,6 +414,7 @@ describe("/api/events", () => {
 
   it("says nothing when a refused comment changes nothing", async () => {
     const p = await poster();
+    const q = await poster();
     const c = await student();
     const controller = new AbortController();
     const stream = (await fetch(new URL("/api/events", baseUrl), { signal: controller.signal })).body?.getReader();
@@ -412,10 +422,10 @@ describe("/api/events", () => {
     try {
       await readUntil(stream, (seen) => seen.includes(": connected"));
       expect((await submitComment(c.cookie, p.id, "", p.path)).status).toBe(400);
-      const marker = await student();
-      await submitComment(marker.cookie, p.id, "marker", p.path);
-      const raw = await readUntil(stream, (seen) => seen.includes(`"postId":${p.id},`));
-      expect(raw.match(new RegExp(`"postId":${p.id},`, "g"))).toHaveLength(1);
+      // events arrive in order: once q's has, a wrongly published p event would already be in `raw`
+      expect((await submitComment(c.cookie, q.id, "marker", q.path)).status).toBe(303);
+      const raw = await readUntil(stream, (seen) => seen.includes(`"postId":${q.id},`));
+      expect(raw).not.toContain(`"postId":${p.id},`);
     } finally {
       controller.abort();
     }
