@@ -540,7 +540,6 @@ textarea {
   grid-template-columns: minmax(0, auto) auto minmax(0, 1fr);
   align-items: end;
   gap: 0.25rem 0.75rem;
-  margin-block: 0.4rem;
   font-weight: 700;
 }
 
