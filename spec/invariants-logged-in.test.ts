@@ -1,8 +1,12 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import axe from "axe-core";
 import { JSDOM } from "jsdom";
-import { beforeAll, describe, expect, inject, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CLASSES } from "../src/lib/classes";
 import { acceptOffer, newStudent, offerIdsOn, ownPostId, submitOffer, submitPost, withdrawPost } from "./helpers";
+import { spawnServer } from "./spawn-server";
 
 // spec/invariants.test.ts (a permanent, unedited check) fetches every route
 // in spec/routes.ts logged OUT — so "/" there checks the login page, by
@@ -14,7 +18,14 @@ import { acceptOffer, newStudent, offerIdsOn, ownPostId, submitOffer, submitPost
 // need a post of the student's own (its edit form, and the page of a withdrawn
 // post, 0020) are fetched as that post's poster. A swapped post (0024), the
 // post a swap withdrew and the accept confirm step are covered the same way.
-const baseUrl = inject("baseUrl");
+//
+// It runs on a server of its own, not the shared one: the board lists every
+// open post, and on the shared server that is every post the rest of the suite
+// has made so far, so axe on "/" took 0.4s or 10s depending on when this file
+// ran (#43).
+const server = await spawnServer(join(mkdtempSync(join(tmpdir(), "spec-inv-")), "test.db"));
+afterAll(() => server.stop());
+const baseUrl = server.baseUrl;
 
 async function ownedPosts(): Promise<{
   open: number;
@@ -32,38 +43,38 @@ async function ownedPosts(): Promise<{
   confirmPath: string;
 }> {
   const fields = { leaving: CLASSES[0].id, join: [CLASSES[2].id], message: "Route coverage." };
-  const openOwner = await newStudent("invopen");
-  expect((await submitPost(openOwner, fields)).status).toBe(303);
-  const withdrawnOwner = await newStudent("invgone");
-  expect((await submitPost(withdrawnOwner, fields)).status).toBe(303);
-  const withdrawn = await ownPostId(withdrawnOwner);
-  const open = await ownPostId(openOwner);
+  const openOwner = await newStudent("invopen", baseUrl);
+  expect((await submitPost(openOwner, fields, baseUrl)).status).toBe(303);
+  const withdrawnOwner = await newStudent("invgone", baseUrl);
+  expect((await submitPost(withdrawnOwner, fields, baseUrl)).status).toBe(303);
+  const withdrawn = await ownPostId(withdrawnOwner, baseUrl);
+  const open = await ownPostId(openOwner, baseUrl);
   if (open === null || withdrawn === null) throw new Error("could not set up the posts");
   // the post page's other views (0023): a post with a pending offer (which
   // locks its edit page, so it isn't the open post above), its offerer, and an
   // offerer whose offer was closed when the withdrawn post was withdrawn
-  const offeredOwner = await newStudent("invofrd");
-  expect((await submitPost(offeredOwner, fields)).status).toBe(303);
-  const offered = await ownPostId(offeredOwner);
+  const offeredOwner = await newStudent("invofrd", baseUrl);
+  expect((await submitPost(offeredOwner, fields, baseUrl)).status).toBe(303);
+  const offered = await ownPostId(offeredOwner, baseUrl);
   if (offered === null) throw new Error("could not set up the offered post");
-  const offerer = await newStudent("invoffer");
-  expect((await submitOffer(offerer, offered, { class: CLASSES[2].id })).status).toBe(303);
-  const closedOfferer = await newStudent("invclosed");
-  expect((await submitOffer(closedOfferer, withdrawn, { class: CLASSES[2].id })).status).toBe(303);
-  expect((await withdrawPost(withdrawnOwner, withdrawn, "/")).status).toBe(303);
+  const offerer = await newStudent("invoffer", baseUrl);
+  expect((await submitOffer(offerer, offered, { class: CLASSES[2].id }, baseUrl)).status).toBe(303);
+  const closedOfferer = await newStudent("invclosed", baseUrl);
+  expect((await submitOffer(closedOfferer, withdrawn, { class: CLASSES[2].id }, baseUrl)).status).toBe(303);
+  expect((await withdrawPost(withdrawnOwner, withdrawn, "/", baseUrl)).status).toBe(303);
   // a swap (0024): the owner accepts an offer from a student with an open
   // post of their own, which the swap then withdraws
-  const swappedOwner = await newStudent("invswap");
-  expect((await submitPost(swappedOwner, fields)).status).toBe(303);
-  const swapped = await ownPostId(swappedOwner);
-  const swappedOfferer = await newStudent("invswapper");
-  expect((await submitPost(swappedOfferer, { leaving: CLASSES[2].id, join: [CLASSES[0].id], message: "" })).status).toBe(303);
-  const swapWithdrawn = await ownPostId(swappedOfferer);
+  const swappedOwner = await newStudent("invswap", baseUrl);
+  expect((await submitPost(swappedOwner, fields, baseUrl)).status).toBe(303);
+  const swapped = await ownPostId(swappedOwner, baseUrl);
+  const swappedOfferer = await newStudent("invswapper", baseUrl);
+  expect((await submitPost(swappedOfferer, { leaving: CLASSES[2].id, join: [CLASSES[0].id], message: "" }, baseUrl)).status).toBe(303);
+  const swapWithdrawn = await ownPostId(swappedOfferer, baseUrl);
   if (swapped === null || swapWithdrawn === null) throw new Error("could not set up the swapped posts");
-  expect((await submitOffer(swappedOfferer, swapped, { class: CLASSES[2].id })).status).toBe(303);
-  const [swapOffer] = await offerIdsOn(swappedOwner, swapped);
-  expect((await acceptOffer(swappedOwner, swapOffer)).status).toBe(303);
-  const [pendingOffer] = await offerIdsOn(offeredOwner, offered);
+  expect((await submitOffer(swappedOfferer, swapped, { class: CLASSES[2].id }, baseUrl)).status).toBe(303);
+  const [swapOffer] = await offerIdsOn(swappedOwner, swapped, baseUrl);
+  expect((await acceptOffer(swappedOwner, swapOffer, { confirm: true }, baseUrl)).status).toBe(303);
+  const [pendingOffer] = await offerIdsOn(offeredOwner, offered, baseUrl);
   return {
     open,
     withdrawn,
@@ -84,7 +95,7 @@ async function ownedPosts(): Promise<{
 const owned = await ownedPosts();
 // a conversation (0031) with something in it: a fresh student writes to demo
 // student alex, who a fresh database always has
-const talker = await newStudent("invtalk");
+const talker = await newStudent("invtalk", baseUrl);
 expect(
   (
     await fetch(new URL("/messages/alex/send", baseUrl), {

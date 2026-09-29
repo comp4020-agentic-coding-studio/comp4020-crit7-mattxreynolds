@@ -1,9 +1,11 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { JSDOM } from "jsdom";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { CLASSES } from "../src/lib/classes";
 import {
   acceptOffer,
-  baseUrl,
   newStudent,
   offerIdsOn,
   ownPostId,
@@ -11,11 +13,20 @@ import {
   submitPost,
   usernameOf,
 } from "./helpers";
+import { spawnServer } from "./spawn-server";
 
 // The routes the live refresh refetches (issue #22; 0042, 0044): each returns
 // the same server-rendered HTML the full page holds, only to a logged-in
 // student, and never the flash notice.
 const [MON_14, , WED_9, WED_1030] = CLASSES.map((c) => c.id);
+
+// A server of its own, not the shared one: these compare the board fragment
+// with the board page, and on the shared server the board holds every post the
+// rest of the suite has made, so each comparison grew slower the later this
+// file ran, until it timed out (#43).
+const server = await spawnServer(join(mkdtempSync(join(tmpdir(), "spec-live-")), "test.db"));
+afterAll(() => server.stop());
+const baseUrl = server.baseUrl;
 
 const get = (path: string, cookie?: string) =>
   fetch(new URL(path, baseUrl), { headers: cookie ? { cookie } : {}, redirect: "manual" });
@@ -30,29 +41,23 @@ async function pageInner(path: string, id: string, cookie: string): Promise<stri
   return el.innerHTML.trim();
 }
 
-/** The fragment and the page's own copy of it, fetched back to back. Other
- *  spec files post on this server at the same time, so a write can land
- *  between the two fetches: try again until they were read at the same state. */
+/** The fragment and the page's own copy of it, fetched back to back. Nothing
+ *  else writes to this file's server between the two, so a difference is a
+ *  real one and is not retried away. */
 async function fragmentAndPage(fragment: string, path: string, id: string, cookie: string) {
-  let pair = { fragment: "", page: "" };
-  for (let attempt = 0; attempt < 30; attempt++) {
-    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 100));
-    const res = await get(fragment, cookie);
-    expect(res.status).toBe(200);
-    pair = { fragment: normalised(await res.text()), page: normalised(await pageInner(path, id, cookie)) };
-    if (pair.fragment === pair.page) break;
-  }
-  return pair;
+  const res = await get(fragment, cookie);
+  expect(res.status).toBe(200);
+  return { fragment: normalised(await res.text()), page: normalised(await pageInner(path, id, cookie)) };
 }
 
 async function postWithOffer(): Promise<{ poster: string; offerer: string; postId: number; offerId: number }> {
-  const poster = await newStudent("liveposter");
-  expect((await submitPost(poster, { leaving: MON_14, join: [WED_9, WED_1030], message: "Live." })).status).toBe(303);
-  const postId = await ownPostId(poster);
+  const poster = await newStudent("liveposter", baseUrl);
+  expect((await submitPost(poster, { leaving: MON_14, join: [WED_9, WED_1030], message: "Live." }, baseUrl)).status).toBe(303);
+  const postId = await ownPostId(poster, baseUrl);
   if (postId === null) throw new Error("no post");
-  const offerer = await newStudent("liveofferer");
-  expect((await submitOffer(offerer, postId, { class: WED_9 })).status).toBe(303);
-  const [offerId] = await offerIdsOn(poster, postId);
+  const offerer = await newStudent("liveofferer", baseUrl);
+  expect((await submitOffer(offerer, postId, { class: WED_9 }, baseUrl)).status).toBe(303);
+  const [offerId] = await offerIdsOn(poster, postId, baseUrl);
   return { poster, offerer, postId, offerId };
 }
 
@@ -71,7 +76,7 @@ describe("the routes that serve refetched content", () => {
   });
 
   it("answer a post that never existed with a 404 to a logged-in student", async () => {
-    const cookie = await newStudent("livenopost");
+    const cookie = await newStudent("livenopost", baseUrl);
     expect((await get("/fragments/posts/999999/", cookie)).status).toBe(404);
     expect((await get("/fragments/posts/abc/", cookie)).status).toBe(404);
   });
@@ -89,7 +94,7 @@ describe("the board fragment", () => {
 
   it("shows the requesting student's own pinned post and offers", async () => {
     const { poster, offerer } = await postWithOffer();
-    const posterName = await usernameOf(poster);
+    const posterName = await usernameOf(poster, baseUrl);
     const fragment = new JSDOM(`<body>${await (await get("/fragments/board/", offerer)).text()}</body>`).window.document;
     expect(fragment.querySelector("#your-offers")).not.toBeNull();
     expect(fragment.body.textContent).toContain(`${posterName}'s post`);
@@ -97,8 +102,8 @@ describe("the board fragment", () => {
   });
 
   it("leaves out the flash notice, and doesn't use it up", async () => {
-    const cookie = await newStudent("liveflash");
-    const created = await submitPost(cookie, { leaving: MON_14, join: [WED_9], message: "" });
+    const cookie = await newStudent("liveflash", baseUrl);
+    const created = await submitPost(cookie, { leaving: MON_14, join: [WED_9], message: "" }, baseUrl);
     const flash = created.headers.get("set-cookie")?.match(/flash=([^;]+)/)?.[0];
     expect(flash).toBeTruthy();
     const both = `${cookie}; ${flash}`;
@@ -112,7 +117,7 @@ describe("the board fragment", () => {
   });
 
   it("is what the board page swaps: the page names the fragment route and holds a polite live region", async () => {
-    const cookie = await newStudent("liveregion");
+    const cookie = await newStudent("liveregion", baseUrl);
     const doc = new JSDOM(await (await get("/", cookie)).text()).window.document;
     expect(doc.getElementById("board-live")?.getAttribute("data-live-url")).toBe("/fragments/board/");
     const region = doc.getElementById("live-announce");
@@ -126,7 +131,7 @@ describe("the board fragment", () => {
 describe("the post fragment", () => {
   it("is exactly the content the post page holds, for each viewer of an offered post", async () => {
     const { poster, offerer, postId } = await postWithOffer();
-    const bystander = await newStudent("livebystander");
+    const bystander = await newStudent("livebystander", baseUrl);
     for (const cookie of [poster, offerer, bystander]) {
       const { fragment, page } = await fragmentAndPage(`/fragments/posts/${postId}/`, `/posts/${postId}/`, "post-live", cookie);
       expect(fragment).toBe(page);
@@ -135,8 +140,8 @@ describe("the post fragment", () => {
 
   it("keeps the offer views private: only the poster's fragment names who offered", async () => {
     const { poster, offerer, postId } = await postWithOffer();
-    const offererName = await usernameOf(offerer);
-    const bystander = await newStudent("liveprivacy");
+    const offererName = await usernameOf(offerer, baseUrl);
+    const bystander = await newStudent("liveprivacy", baseUrl);
     const body = async (cookie: string) => (await get(`/fragments/posts/${postId}/`, cookie)).text();
     expect(await body(poster)).toContain(offererName);
     expect(await body(bystander)).not.toContain(offererName);
@@ -145,16 +150,16 @@ describe("the post fragment", () => {
 
   it("drops the controls that no longer apply once the post is swapped", async () => {
     const { poster, offerer, postId, offerId } = await postWithOffer();
-    const bystander = await newStudent("liveswapped");
+    const bystander = await newStudent("liveswapped", baseUrl);
     // the offerer needs an open post of their own for the swap to withdraw
-    expect((await submitPost(offerer, { leaving: WED_9, join: [MON_14], message: "" })).status).toBe(303);
+    expect((await submitPost(offerer, { leaving: WED_9, join: [MON_14], message: "" }, baseUrl)).status).toBe(303);
 
     const before = await (await get(`/fragments/posts/${postId}/`, poster)).text();
     expect(before).toContain("Accept");
     expect(before).toContain("Withdraw");
     expect(await (await get(`/fragments/posts/${postId}/`, bystander)).text()).toContain("Offer to swap");
 
-    expect((await acceptOffer(poster, offerId)).status).toBe(303);
+    expect((await acceptOffer(poster, offerId, { confirm: true }, baseUrl)).status).toBe(303);
 
     const after = await (await get(`/fragments/posts/${postId}/`, poster)).text();
     expect(after).toContain("Swapped:");

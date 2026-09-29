@@ -27,8 +27,11 @@ export async function newStudent(prefix = "poster", origin = baseUrl): Promise<s
   return cookie;
 }
 
+// Read from the inbox, not the board: the shared server's board holds every
+// post the whole suite has made, so parsing it just for a name slows every
+// later test (#43).
 export async function usernameOf(cookie: string, origin = baseUrl): Promise<string> {
-  const doc = await page("/", cookie, origin);
+  const doc = await page("/messages/", cookie, origin);
   return doc.querySelector(".nav-username")?.textContent?.trim() ?? "";
 }
 

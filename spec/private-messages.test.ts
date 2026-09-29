@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CLASSES } from "../src/lib/classes";
 import { conversationRefetchOn } from "../src/lib/live";
 import {
@@ -25,12 +25,12 @@ import { spawnServer } from "./spawn-server";
 // server returns.
 const [MON_14, , WED_9, WED_1030] = CLASSES.map((c) => c.id);
 
-function send(cookie: string | null, username: string, body?: string): Promise<Response> {
+function send(cookie: string | null, username: string, body?: string, origin = baseUrl): Promise<Response> {
   const form = new URLSearchParams();
   if (body !== undefined) form.set("body", body);
-  return fetch(new URL(`/messages/${username}/send`, baseUrl), {
+  return fetch(new URL(`/messages/${username}/send`, origin), {
     method: "POST",
-    headers: cookie ? { origin: baseUrl, cookie } : { origin: baseUrl },
+    headers: cookie ? { origin, cookie } : { origin },
     body: form,
     redirect: "manual",
   });
@@ -45,9 +45,9 @@ function submitComment(cookie: string, postId: number, body: string): Promise<Re
   });
 }
 
-async function student(prefix = "pm") {
-  const cookie = await newStudent(prefix);
-  return { cookie, username: await usernameOf(cookie) };
+async function student(prefix = "pm", origin = baseUrl) {
+  const cookie = await newStudent(prefix, origin);
+  return { cookie, username: await usernameOf(cookie, origin) };
 }
 
 async function poster() {
@@ -378,20 +378,32 @@ describe('the "Message" links on a post page (0030)', () => {
   });
 });
 
+// These count every "a private message was sent" on the stream, and that event
+// carries no id to tell whose it is (0034), so they run on a server of their
+// own: on the shared one another file's private message can land in the same
+// window and make the count two (#43).
 describe("/api/events", () => {
+  let server: { baseUrl: string; stop: () => Promise<void> } | undefined;
+  let origin = "";
+  // spawnServer may retry on a new port, so the hook gets longer than the default
+  beforeAll(async () => {
+    server = await spawnServer(join(mkdtempSync(join(tmpdir(), "spec-pm-events-")), "test.db"));
+    origin = server.baseUrl;
+  }, 60_000);
+  afterAll(() => server?.stop());
+
   it("says only that a private message was sent, with no text, username or id", async () => {
-    const a = await student("pmstreamer");
-    const b = await student("pmstreamee");
+    const a = await student("pmstreamer", origin);
+    const b = await student("pmstreamee", origin);
     const body = "distinctive-private-text-24680";
 
     const controller = new AbortController();
-    const stream = (await fetch(new URL("/api/events", baseUrl), { signal: controller.signal })).body?.getReader();
+    const stream = (await fetch(new URL("/api/events", origin), { signal: controller.signal })).body?.getReader();
     if (!stream) throw new Error("no stream");
     try {
       await readUntil(stream, (seen) => seen.includes(": connected"));
-      expect((await send(a.cookie, b.username, body)).status).toBe(303);
+      expect((await send(a.cookie, b.username, body, origin)).status).toBe(303);
       const raw = await readUntil(stream, (seen) => seen.includes('"private-message"'));
-      // other spec files run against this server too, so their post events are on the stream as well
       expect(privateMessageEvents(raw)).toEqual([{ type: "private-message" }]);
       expect(raw.toLowerCase()).not.toContain(body);
       expect(raw.toLowerCase()).not.toContain(a.username.toLowerCase());
@@ -402,19 +414,19 @@ describe("/api/events", () => {
   });
 
   it("says nothing when a refused private message stores nothing", async () => {
-    const a = await student();
-    const b = await student();
+    const a = await student("pm", origin);
+    const b = await student("pm", origin);
     const controller = new AbortController();
-    const stream = (await fetch(new URL("/api/events", baseUrl), { signal: controller.signal })).body?.getReader();
+    const stream = (await fetch(new URL("/api/events", origin), { signal: controller.signal })).body?.getReader();
     if (!stream) throw new Error("no stream");
     try {
       await readUntil(stream, (seen) => seen.includes(": connected"));
-      expect((await send(a.cookie, b.username, "")).status).toBe(400);
-      expect((await send(a.cookie, a.username, "me")).status).toBe(400);
-      expect((await send(a.cookie, "nobody-here-9", "hi")).status).toBe(404);
-      expect((await send(null, b.username, "hi")).status).toBeGreaterThanOrEqual(300);
+      expect((await send(a.cookie, b.username, "", origin)).status).toBe(400);
+      expect((await send(a.cookie, a.username, "me", origin)).status).toBe(400);
+      expect((await send(a.cookie, "nobody-here-9", "hi", origin)).status).toBe(404);
+      expect((await send(null, b.username, "hi", origin)).status).toBeGreaterThanOrEqual(300);
       // events arrive in order: by the time the valid one has, a wrongly published one would be in `raw`
-      expect((await send(a.cookie, b.username, "marker")).status).toBe(303);
+      expect((await send(a.cookie, b.username, "marker", origin)).status).toBe(303);
       const raw = await readUntil(stream, (seen) => seen.includes('"private-message"'));
       expect(privateMessageEvents(raw)).toHaveLength(1);
     } finally {
