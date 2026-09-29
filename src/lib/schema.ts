@@ -92,6 +92,39 @@ export const swapPostJoinClasses = sqliteTable(
   (table) => [primaryKey({ columns: [table.postId, table.classId] })],
 );
 
+// An offer (0022, 0025): a student saying "happy to swap" on a swap post,
+// naming the join class they hold and would leave. Its status is what became
+// of it; a closed offer stores why (closed_reason), and resolved_at is when it
+// stopped pending.
+export const offers = sqliteTable(
+  "offers",
+  {
+    id: int().primaryKey({ autoIncrement: true }),
+    postId: int("post_id")
+      .notNull()
+      .references(() => swapPosts.id, { onDelete: "cascade" }),
+    offererId: int("offerer_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    offeredClassId: text("offered_class_id")
+      .notNull()
+      .references(() => classes.id),
+    status: text({ enum: ["pending", "accepted", "declined", "withdrawn", "closed"] })
+      .notNull()
+      .default("pending"),
+    closedReason: text("closed_reason", { enum: ["post-withdrawn", "post-swapped", "offerer-swapped"] }),
+    createdAt: int("created_at", { mode: "timestamp_ms" }).notNull(),
+    resolvedAt: int("resolved_at", { mode: "timestamp_ms" }),
+  },
+  // at most one pending offer per student per post (0022), enforced by the
+  // database so two simultaneous requests can't both get in
+  (table) => [
+    uniqueIndex("offers_one_pending_per_student_post_idx")
+      .on(table.postId, table.offererId)
+      .where(sql`${table.status} = 'pending'`),
+  ],
+);
+
 export type Student = typeof students.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type SchoolClass = typeof classes.$inferSelect;
