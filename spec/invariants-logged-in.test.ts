@@ -1,6 +1,8 @@
 import axe from "axe-core";
 import { JSDOM } from "jsdom";
 import { beforeAll, describe, expect, inject, it } from "vitest";
+import { CLASSES } from "../src/lib/classes";
+import { newStudent, ownPostId, submitPost, withdrawPost } from "./helpers";
 
 // spec/invariants.test.ts (a permanent, unedited check) fetches every route
 // in spec/routes.ts logged OUT — so "/" there checks the login page, by
@@ -8,9 +10,34 @@ import { beforeAll, describe, expect, inject, it } from "vitest";
 // accessibility floor, fetched with a fresh student's own session cookie, to
 // cover the logged-in pages spec/invariants.test.ts can't see (0013): the
 // board, the new-post form, and (0020) a seeded post's own page — the first
-// demo post, which a fresh test database always has as post 1.
+// demo post, which a fresh test database always has as post 1. The pages that
+// need a post of the student's own (its edit form, and the page of a withdrawn
+// post, 0020) are fetched as that post's poster.
 const baseUrl = inject("baseUrl");
-const LOGGED_IN_ROUTES = ["/", "/posts/new/", "/posts/1/"];
+
+async function ownedPosts(): Promise<{ open: number; withdrawn: number; openOwner: string; withdrawnOwner: string }> {
+  const fields = { leaving: CLASSES[0].id, join: [CLASSES[2].id], message: "Route coverage." };
+  const openOwner = await newStudent("invopen");
+  await submitPost(openOwner, fields);
+  const withdrawnOwner = await newStudent("invgone");
+  await submitPost(withdrawnOwner, fields);
+  const withdrawn = await ownPostId(withdrawnOwner);
+  const open = await ownPostId(openOwner);
+  if (open === null || withdrawn === null) throw new Error("could not set up the posts");
+  await withdrawPost(withdrawnOwner, withdrawn, "/");
+  return { open, withdrawn, openOwner, withdrawnOwner };
+}
+
+const owned = await ownedPosts();
+// [route, cookie to fetch it with (a fresh student when none)]
+const LOGGED_IN_ROUTES: [string, string | null][] = [
+  ["/", null],
+  ["/posts/new/", null],
+  ["/posts/1/", null],
+  [`/posts/${owned.open}/`, owned.openOwner],
+  [`/posts/${owned.open}/edit/`, owned.openOwner],
+  [`/posts/${owned.withdrawn}/`, owned.withdrawnOwner],
+];
 
 async function signUpAndGetCookie(username: string, password: string): Promise<string> {
   const res = await fetch(new URL("/api/signup", baseUrl), {
@@ -24,14 +51,14 @@ async function signUpAndGetCookie(username: string, password: string): Promise<s
   return `session=${match[1]}`;
 }
 
-for (const route of LOGGED_IN_ROUTES) describe(`invariants: ${route} (logged in)`, () => {
+for (const [route, ownerCookie] of LOGGED_IN_ROUTES) describe(`invariants: ${route} (logged in)`, () => {
   let status: number;
   let dom: JSDOM;
   let doc: Document;
 
   beforeAll(async () => {
     const username = `invlogin${process.hrtime.bigint() % 10_000_000n}`;
-    const cookie = await signUpAndGetCookie(username, "invariant-password1");
+    const cookie = ownerCookie ?? (await signUpAndGetCookie(username, "invariant-password1"));
     const res = await fetch(new URL(route, baseUrl), { headers: { cookie } });
     status = res.status;
     dom = new JSDOM(await res.text(), {

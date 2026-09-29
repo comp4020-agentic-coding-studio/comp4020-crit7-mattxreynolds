@@ -78,3 +78,29 @@ export async function ownPostId(cookie: string, origin = baseUrl): Promise<numbe
   const id = href?.match(/^\/posts\/(\d+)\/$/)?.[1];
   return id ? Number(id) : null;
 }
+
+/** Submit the edit form of post `id` as the student with this cookie. */
+export function submitEdit(cookie: string, id: number | string, fields: PostFields, origin = baseUrl): Promise<Response> {
+  const body = new URLSearchParams();
+  if (fields.leaving !== undefined) body.set("leaving", fields.leaving);
+  for (const classId of fields.join ?? []) body.append("join", classId);
+  if (fields.message !== undefined) body.set("message", fields.message);
+  return fetch(new URL(`/posts/${id}/edit/`, origin), {
+    method: "POST",
+    headers: { origin, cookie },
+    body,
+    redirect: "manual",
+  });
+}
+
+/** Press Withdraw on post `id`, as the form does: `next` is the page it sits on. */
+export function withdrawPost(cookie: string, id: number | string, next?: string, origin = baseUrl): Promise<Response> {
+  const body = new URLSearchParams();
+  if (next !== undefined) body.set("next", next);
+  return fetch(new URL(`/posts/${id}/withdraw`, origin), {
+    method: "POST",
+    headers: { origin, cookie },
+    body,
+    redirect: "manual",
+  });
+}

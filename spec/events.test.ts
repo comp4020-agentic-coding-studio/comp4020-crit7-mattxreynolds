@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CLASSES } from "../src/lib/classes";
-import { baseUrl, newStudent, ownPostId, submitPost, usernameOf } from "./helpers";
+import { baseUrl, newStudent, ownPostId, submitEdit, submitPost, usernameOf, withdrawPost } from "./helpers";
 
 // "post N changed" on the public stream (issue #18, decision 0043): the post
 // id and a kind, and nothing a logged-out reader must not see. Other spec
@@ -51,6 +51,43 @@ describe("/api/events", () => {
       const lower = raw.toLowerCase();
       expect(lower).not.toContain(username.toLowerCase());
       expect(lower).not.toContain(message);
+      for (const c of CLASSES) {
+        for (const word of [c.id, c.start, c.end, c.tutor]) expect(lower).not.toContain(word.toLowerCase());
+      }
+    } finally {
+      controller.abort();
+    }
+  });
+
+  it("broadcasts post N changed when a post is edited and when it is withdrawn, with no content", async () => {
+    const cookie = await newStudent("eventer");
+    const username = await usernameOf(cookie);
+    const before = "distinctive-before-text-12345";
+    const after = "distinctive-after-text-67890";
+    expect((await submitPost(cookie, { leaving: CLASSES[0].id, join: [CLASSES[2].id], message: before })).status).toBe(303);
+    const id = await ownPostId(cookie);
+    expect(id).not.toBeNull();
+
+    const controller = new AbortController();
+    const res = await fetch(new URL("/api/events", baseUrl), { signal: controller.signal });
+    const stream = (res.body as ReadableStream<Uint8Array>).getReader();
+    try {
+      await readUntil(stream, (seen) => seen.includes(": connected"));
+      expect((await submitEdit(cookie, id as number, { leaving: CLASSES[1].id, join: [CLASSES[3].id], message: after })).status).toBe(303);
+      expect((await withdrawPost(cookie, id as number, "/")).status).toBe(303);
+
+      const raw = await readUntil(stream, (seen) => seen.includes('"kind":"withdrawn"') && seen.includes(`"postId":${id},`));
+      const events = raw
+        .split("\n")
+        .filter((l) => l.startsWith("data: ") && l.includes(`"postId":${id},`))
+        .map((l) => JSON.parse(l.slice(6)));
+      expect(events).toEqual([
+        { type: "post-changed", postId: id, kind: "edited" },
+        { type: "post-changed", postId: id, kind: "withdrawn" },
+      ]);
+
+      const lower = raw.toLowerCase();
+      for (const secret of [username, before, after]) expect(lower).not.toContain(secret.toLowerCase());
       for (const c of CLASSES) {
         for (const word of [c.id, c.start, c.end, c.tutor]) expect(lower).not.toContain(word.toLowerCase());
       }
