@@ -1,0 +1,38 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { inboxFor } from "../../lib/privateMessages";
+import { formatCanberra } from "../../lib/time";
+
+// The inbox (0033): the viewer's conversations, most recent activity first.
+// Loading it reads nothing; a private message is read by opening its
+// conversation. Not live: the header count and this list move on reload.
+const student = Astro.locals.student;
+const rows = student ? inboxFor(student.id) : [];
+---
+
+<Layout title="Messages" student={student}>
+  <h1>Messages</h1>
+  {
+    rows.length === 0 ? (
+      <p class="no-conversations">
+        You have no conversations yet. A conversation starts from a "Message" link beside a student's name on a post
+        page.
+      </p>
+    ) : (
+      <ul class="conversation-list">
+        {rows.map((row) => (
+          <li class={row.unread ? "conversation unread" : "conversation"}>
+            <a href={`/messages/${encodeURIComponent(row.username)}/`}>
+              <span class="conversation-with">{row.username}</span>{" "}
+              <time datetime={row.at.toISOString()}>{formatCanberra(row.at)}</time>
+              <span class="conversation-preview">{row.preview}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+  <p>
+    <a href="/">Back to the board</a>
+  </p>
+</Layout>

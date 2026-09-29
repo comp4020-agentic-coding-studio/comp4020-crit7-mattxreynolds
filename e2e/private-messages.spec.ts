@@ -110,3 +110,66 @@ test("an unknown username or your own is not found", async ({ browser }, testInf
   }
   await context.close();
 });
+
+// Issue #25 (0033): the header count and the inbox. Reload-only: nothing moves
+// until the page is loaded again.
+test("the header counts unread private messages and the inbox shows them in bold until opened", async ({ browser }, testInfo) => {
+  const suffix = `${testInfo.project.name[0]}${Date.now() % 100000}`;
+  const meName = `inboxme${suffix}`;
+  const names = [`inboxb${suffix}`, `inboxc${suffix}`];
+
+  const meContext = await newContext(browser, testInfo);
+  const me = await meContext.newPage();
+  await signUp(me, meName);
+  await me.goto("/messages/");
+  await expect(me.getByRole("link", { name: "Messages", exact: true })).toBeVisible();
+  await expect(me.getByText(/no conversations yet/i)).toBeVisible();
+
+  // two students write, one of them twice; each in their own browser
+  for (const [i, name] of names.entries()) {
+    const context = await newContext(browser, testInfo);
+    const sender = await context.newPage();
+    await signUp(sender, name);
+    await sender.goto(`/messages/${meName}/`);
+    await sender.getByLabel(/Private message to/).fill(`Hello from ${name}, can we talk about the swap?`);
+    await sender.getByRole("button", { name: "Send" }).click();
+    await expect(sender.locator(".private-message")).toHaveCount(1);
+    if (i === 1) {
+      await sender.getByLabel(/Private message to/).fill("Second one, so the count is per private message.");
+      await sender.getByRole("button", { name: "Send" }).click();
+      await expect(sender.locator(".private-message")).toHaveCount(2);
+    }
+    await context.close();
+  }
+
+  // not live: the header only moves when the page loads again
+  await expect(me.getByRole("link", { name: /^Messages/ })).toHaveText("Messages");
+  await me.reload();
+  await expect(me.getByRole("link", { name: "Messages (3)" })).toBeVisible();
+
+  await me.getByRole("link", { name: "Messages (3)" }).click();
+  await expect(me).toHaveURL("/messages/");
+  const rows = me.locator("li.conversation");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText(names[1] ?? "");
+  await expect(rows.nth(0)).toContainText("Second one, so the count is per private message.");
+  await expect(rows.nth(1)).toContainText(names[0] ?? "");
+  for (const row of await rows.all()) {
+    expect(await row.evaluate((el) => getComputedStyle(el).fontWeight)).toBe("700");
+    await expect(row.locator("time")).toBeVisible();
+  }
+  await me.screenshot({ path: screenshotPath(testInfo, "inbox-unread"), fullPage: true });
+
+  // opening one conversation clears its private messages only
+  await rows.nth(1).getByRole("link").click();
+  await expect(me).toHaveURL(`/messages/${names[0]}/`);
+  await expect(me.getByRole("link", { name: "Messages (2)" })).toBeVisible();
+  await me.getByRole("link", { name: "Messages (2)" }).click();
+  await expect(rows.nth(0)).toContainText(names[1] ?? "");
+  expect(await rows.nth(0).evaluate((el) => getComputedStyle(el).fontWeight)).toBe("700");
+  expect(await rows.nth(1).evaluate((el) => getComputedStyle(el).fontWeight)).not.toBe("700");
+
+  await rows.nth(0).getByRole("link").click();
+  await expect(me.getByRole("link", { name: "Messages", exact: true })).toBeVisible();
+  await meContext.close();
+});

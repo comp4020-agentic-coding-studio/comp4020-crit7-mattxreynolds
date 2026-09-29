@@ -1,5 +1,6 @@
 ---
 import "../styles.css";
+import { unreadCount } from "../lib/privateMessages";
 import type { Student } from "../lib/schema";
 
 interface Props {
@@ -8,6 +9,8 @@ interface Props {
 }
 
 const { title, student } = Astro.props;
+// the header count (0033): read when the page renders, so it moves on reload only
+const unread = student ? unreadCount(student.id) : 0;
 ---
 
 <!doctype html>
@@ -20,6 +23,7 @@ const { title, student } = Astro.props;
   <body>
     <nav aria-label="site">
       {student && <a href="/">Board</a>}
+      {student && <a href="/messages/">{unread > 0 ? `Messages (${unread})` : "Messages"}</a>}
       <a href="/readme/">About</a>
       {
         student && (

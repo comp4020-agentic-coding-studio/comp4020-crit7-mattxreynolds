@@ -1,7 +1,7 @@
 ---
 import Conversation from "../../components/Conversation.astro";
 import Layout from "../../layouts/Layout.astro";
-import { conversationPartner, PRIVATE_MESSAGE_MAX } from "../../lib/privateMessages";
+import { conversationPartner, markConversationRead, PRIVATE_MESSAGE_MAX } from "../../lib/privateMessages";
 
 // The conversation with one student (0031): "me and that student", so there is
 // no address for anyone else's. An unknown username, or your own, is a 404.
@@ -11,6 +11,9 @@ import { conversationPartner, PRIVATE_MESSAGE_MAX } from "../../lib/privateMessa
 const student = Astro.locals.student;
 const other = student ? conversationPartner(student.id, Astro.params.username ?? "") : null;
 if (!other) Astro.response.status = 404;
+// opening it reads every private message received here (0033): the one GET
+// that writes, done before the header renders so its count is already right
+if (student && other) markConversationRead(student.id, other);
 ---
 
 <Layout title={other ? `Conversation with ${other.username}` : "Conversation not found"} student={student}>

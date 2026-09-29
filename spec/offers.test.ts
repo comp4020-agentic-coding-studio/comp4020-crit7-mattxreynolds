@@ -485,7 +485,7 @@ describe("the demo seed's offers (0038)", () => {
         );
       };
       expect(await lines()).toMatchObject({
-        alex: "2 offers to answer",
+        alex: "2 offers to answer · 1 unread message",
         priya: "1 offer to answer · 1 pending offer",
         sam: "1 pending offer",
         lena: "open post · 1 pending offer",

@@ -407,7 +407,7 @@ describe("the demo seed's posts", () => {
         );
       };
       expect(await lines()).toEqual({
-        alex: "2 offers to answer",
+        alex: "2 offers to answer · 1 unread message",
         priya: "1 offer to answer · 1 pending offer",
         sam: "1 pending offer",
         lena: "open post · 1 pending offer",

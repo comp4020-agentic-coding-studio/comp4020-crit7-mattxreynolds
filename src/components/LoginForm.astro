@@ -2,6 +2,7 @@
 import { RANDOM_DEMO } from "../lib/auth";
 import { demoOfferCounts } from "../lib/offer-store";
 import { offersToAnswerLabel, countLabel } from "../lib/offers";
+import { demoUnreadCounts, unreadLabel } from "../lib/privateMessages";
 import { usernamesWithOpenPost } from "../lib/posts";
 import { DEMO_USERNAMES } from "../lib/seed";
 
@@ -13,16 +14,19 @@ interface Props {
 const { next, error } = Astro.props;
 const demoChoices = [...DEMO_USERNAMES, RANDOM_DEMO];
 // each demo student's live line (0039): counts and yes/no only, never what a
-// post or an offer says. Its parts so far: offers waiting on their open post,
-// or just that they have one; offers they have made; and "no post yet" when
-// there is nothing else to say.
+// post, an offer or a private message says. Its parts: offers waiting on their
+// open post, or just that they have one; offers they have made; unread private
+// messages; and "no post yet" when there is nothing else to say.
 const withPost = usernamesWithOpenPost(DEMO_USERNAMES);
 const offerCounts = demoOfferCounts(DEMO_USERNAMES);
+const unreadCounts = demoUnreadCounts(DEMO_USERNAMES);
 function demoLine(name: string): string {
   const { toAnswer = 0, made = 0 } = offerCounts.get(name) ?? {};
   const parts: string[] = [];
   if (withPost.has(name)) parts.push(toAnswer > 0 ? offersToAnswerLabel(toAnswer) : "open post");
   if (made > 0) parts.push(countLabel(made));
+  const unread = unreadCounts.get(name) ?? 0;
+  if (unread > 0) parts.push(unreadLabel(unread));
   return parts.length > 0 ? parts.join(" · ") : "no post yet";
 }
 ---
