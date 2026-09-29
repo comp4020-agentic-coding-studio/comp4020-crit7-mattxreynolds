@@ -209,8 +209,10 @@ describe("what the server refuses", () => {
     const res = await send(null, b.username, "sneaky");
     expect(res.status).toBeGreaterThanOrEqual(300);
     expect(res.headers.get("location") ?? "").toContain("/login/");
-    expect(await thread("anyone", b.cookie)).toEqual([]);
-    expect((await page(`/messages/${b.username}/`, b.cookie)).querySelector("h1")?.textContent).toBe("Conversation not found");
+    // a fresh student's conversation with b is the only place a stored row could show
+    const c = await student();
+    expect(await thread(b.username, c.cookie)).toEqual([]);
+    expect(await thread(c.username, b.cookie)).toEqual([]);
   });
 
   it("has no edit or delete route for a private message", async () => {
