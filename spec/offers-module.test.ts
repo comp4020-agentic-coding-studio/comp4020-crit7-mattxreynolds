@@ -209,9 +209,9 @@ describe("planAccept: what an accept closes (0024)", () => {
 describe("swappedSentence (0024)", () => {
   it("says who moves where, and that the change is made in MyTimetable", () => {
     expect(
-      swappedSentence({ poster: "alex", offered: "Wed 09:00–10:30", offerer: "priya", leaving: "Mon 14:00–15:30" }),
+      swappedSentence({ poster: "Alex", offered: "Wed 09:00–10:30", offerer: "Priya", leaving: "Mon 14:00–15:30" }),
     ).toBe(
-      "Swapped: alex moves to Wed 09:00–10:30, priya moves to Mon 14:00–15:30. Make the change in MyTimetable. This app can't.",
+      "Swapped: Alex moves to Wed 09:00–10:30, Priya moves to Mon 14:00–15:30. Make the change in MyTimetable. This app can't.",
     );
   });
 });

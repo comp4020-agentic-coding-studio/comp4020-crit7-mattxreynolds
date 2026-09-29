@@ -243,7 +243,7 @@ describe("the inbox", () => {
     const dbPath = join(mkdtempSync(join(tmpdir(), "inbox-empty-")), "test.db");
     const server = await spawnServer(dbPath);
     try {
-      const noah = await demoCookie("noah", server.baseUrl);
+      const noah = await demoCookie("Noah", server.baseUrl);
       const doc = await page("/messages/", noah, server.baseUrl);
       expect(doc.querySelectorAll("li.conversation")).toHaveLength(0);
       const empty = text(doc.querySelector(".no-conversations"));
@@ -253,8 +253,8 @@ describe("the inbox", () => {
       expect(text(doc.querySelector('nav a[href="/messages/"]'))).toBe("Messages");
 
       // and it is not the message shown once there is one
-      const sam = await demoCookie("sam", server.baseUrl);
-      await sendOk(sam, "noah", "hello noah", server.baseUrl);
+      const sam = await demoCookie("Sam", server.baseUrl);
+      await sendOk(sam, "Noah", "hello noah", server.baseUrl);
       const after = await page("/messages/", noah, server.baseUrl);
       expect(after.querySelector(".no-conversations")).toBeNull();
       expect(after.querySelectorAll("li.conversation")).toHaveLength(1);
@@ -302,20 +302,20 @@ describe("the seeded unread private message (0038, 0033)", () => {
     const dbPath = join(mkdtempSync(join(tmpdir(), "inbox-seed-")), "test.db");
     const server = await spawnServer(dbPath);
     try {
-      const alex = await demoCookie("alex", server.baseUrl);
+      const alex = await demoCookie("Alex", server.baseUrl);
       expect(await headerLink("/", alex, server.baseUrl)).toBe("Messages (1)");
       const rows = await inbox(alex, server.baseUrl);
-      expect(rows.map((r) => [r.other, r.unread])).toEqual([["priya", true]]);
+      expect(rows.map((r) => [r.other, r.unread])).toEqual([["Priya", true]]);
       expect(rows[0]?.preview).toContain("Hi Alex");
 
       await page("/messages/priya/", alex, server.baseUrl);
       expect(await headerLink("/", alex, server.baseUrl)).toBe("Messages");
-      expect((await inbox(alex, server.baseUrl)).map((r) => [r.other, r.unread])).toEqual([["priya", false]]);
+      expect((await inbox(alex, server.baseUrl)).map((r) => [r.other, r.unread])).toEqual([["Priya", false]]);
 
       // the read conversation between jordan and mei was never counted
-      const mei = await demoCookie("mei", server.baseUrl);
+      const mei = await demoCookie("Mei", server.baseUrl);
       expect(await headerLink("/", mei, server.baseUrl)).toBe("Messages");
-      expect((await inbox(mei, server.baseUrl)).map((r) => [r.other, r.unread])).toEqual([["jordan", false]]);
+      expect((await inbox(mei, server.baseUrl)).map((r) => [r.other, r.unread])).toEqual([["Jordan", false]]);
     } finally {
       await server.stop();
     }
@@ -328,30 +328,30 @@ describe("the login page's demo lines (0039)", () => {
     const server = await spawnServer(dbPath);
     try {
       const lines = await demoLines(server.baseUrl);
-      expect(lines.alex).toBe("2 offers to answer · 1 unread message");
+      expect(lines.Alex).toBe("2 offers to answer · 1 unread message");
       // the seeded read messages count for nobody
-      for (const name of ["priya", "sam", "lena", "jordan", "mei", "noah"]) {
+      for (const name of ["Priya", "Sam", "Lena", "Jordan", "Mei", "Noah", "Zara"]) {
         expect(lines[name], name).not.toContain("unread");
       }
 
       // it is live: two more for sam, and the part is plural; alex reads his
       const fresh = await newStudent("ibl", server.baseUrl);
-      await sendOk(fresh, "sam", "first secret-line-text", server.baseUrl);
-      await sendOk(fresh, "sam", "second secret-line-text", server.baseUrl);
-      await sendOk(fresh, "noah", "third secret-line-text", server.baseUrl);
-      const alex = await demoCookie("alex", server.baseUrl);
+      await sendOk(fresh, "Sam", "first secret-line-text", server.baseUrl);
+      await sendOk(fresh, "Sam", "second secret-line-text", server.baseUrl);
+      await sendOk(fresh, "Noah", "third secret-line-text", server.baseUrl);
+      const alex = await demoCookie("Alex", server.baseUrl);
       await page("/messages/priya/", alex, server.baseUrl);
       const after = await demoLines(server.baseUrl);
-      expect(after.alex).toBe("2 offers to answer");
-      expect(after.sam).toBe("1 pending offer · 2 unread messages");
+      expect(after.Alex).toBe("2 offers to answer");
+      expect(after.Sam).toBe("1 pending offer · 2 unread messages");
       // "no post yet" is only said when there is nothing else to say (0039)
-      expect(after.noah).toBe("1 unread message");
+      expect(after.Noah).toBe("1 unread message");
 
       // counts only: no message text, no other student's username
       const raw = await (await fetch(new URL("/login/", server.baseUrl))).text();
       expect(raw).not.toContain("secret-line-text");
       expect(raw).not.toContain("Hi Alex");
-      expect(after.sam).not.toContain(await usernameOf(fresh, server.baseUrl));
+      expect(after.Sam).not.toContain(await usernameOf(fresh, server.baseUrl));
     } finally {
       await server.stop();
     }

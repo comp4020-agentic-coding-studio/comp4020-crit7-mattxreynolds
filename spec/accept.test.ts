@@ -383,22 +383,22 @@ describe("the demo seed's accept cascade (0038)", () => {
       const yours = async (cookie: string) =>
         [...(await at("/", cookie)).querySelectorAll("#your-offers ~ ul .own-offer")].map((el) => text(el));
 
-      const alex = await demoCookie("alex", server.baseUrl);
-      const priya = await demoCookie("priya", server.baseUrl);
-      const sam = await demoCookie("sam", server.baseUrl);
-      const lena = await demoCookie("lena", server.baseUrl);
+      const alex = await demoCookie("Alex", server.baseUrl);
+      const priya = await demoCookie("Priya", server.baseUrl);
+      const sam = await demoCookie("Sam", server.baseUrl);
+      const lena = await demoCookie("Lena", server.baseUrl);
       const alexPost = await own(alex);
       const priyaPost = await own(priya);
 
       // priya's offer is the first pending one on alex's post
       const offers = [...(await at(alexPost, alex)).querySelectorAll('form[action$="/decline"]')].map((f) => f.getAttribute("action")?.match(/\d+/)?.[0]);
-      expect(text((await at(alexPost, alex)).querySelector(".offers li"))).toContain("priya");
+      expect(text((await at(alexPost, alex)).querySelector(".offers li"))).toContain("Priya");
       const res = await acceptOffer(alex, offers[0] ?? "", { confirm: true }, server.baseUrl);
       expect([res.status, res.headers.get("location")]).toEqual([303, alexPost]);
 
       // alex's post is swapped: alex takes priya's class, priya takes alex's
       expect(text((await at(alexPost, alex)).querySelector(".swapped"))).toBe(
-        `Swapped: alex moves to ${label(WED_9)}, priya moves to ${label(MON_14)}. Make the change in MyTimetable. This app can't.`,
+        `Swapped: Alex moves to ${label(WED_9)}, Priya moves to ${label(MON_14)}. Make the change in MyTimetable. This app can't.`,
       );
       expect(await yours(priya)).toEqual([
         expect.stringContaining("Accepted"), // her offer on alex's post
@@ -419,7 +419,7 @@ describe("the demo seed's accept cascade (0038)", () => {
       expect((await at("/", priya)).querySelector('#your-post ~ .your-swap-panel a[href="/posts/new/"]')).not.toBeNull();
 
       // lena's post is untouched: still open with nothing pending
-      expect(text((await at("/", sam)).querySelector("#open-posts ~ .board-post h3"))).toBe("lena");
+      expect(text((await at("/", sam)).querySelector("#open-posts ~ .board-post h3"))).toBe("Lena");
       expect(text((await at("/", sam)).querySelector("#open-posts ~ .board-post .offer-count"))).toBe("0 pending offers");
     } finally {
       await server.stop();
@@ -435,7 +435,7 @@ describe("the demo seed's accept cascade (0038)", () => {
       const post = db
         .prepare(
           `select p.id, p.leaving_class_id as leaving, p.status, p.posted_at as postedAt, p.withdrawn_at as withdrawnAt
-           from swap_posts p join students s on s.id = p.student_id where s.username = 'jordan'`,
+           from swap_posts p join students s on s.id = p.student_id where s.username = 'Jordan'`,
         )
         .all() as { id: number; leaving: string; status: string; postedAt: number; withdrawnAt: number | null }[];
       expect(post).toHaveLength(1);
@@ -450,7 +450,7 @@ describe("the demo seed's accept cascade (0038)", () => {
            from offers o join students offerer on offerer.id = o.offerer_id where o.post_id = ?`,
         )
         .all(post[0].id) as { offerer: string; offered: string; status: string; closedReason: string | null; at: number; resolvedAt: number }[];
-      expect(rows.map((r) => [r.offerer, r.offered, r.status, r.closedReason])).toEqual([["mei", WED_1530, "accepted", null]]);
+      expect(rows.map((r) => [r.offerer, r.offered, r.status, r.closedReason])).toEqual([["Mei", WED_1530, "accepted", null]]);
       // posted, then offered, then accepted, all within the last three days
       expect(rows[0].at).toBeGreaterThan(post[0].postedAt);
       expect(rows[0].resolvedAt).toBeGreaterThan(rows[0].at);
@@ -462,25 +462,25 @@ describe("the demo seed's accept cascade (0038)", () => {
           `select count(*) as n from offers o
            join students offerer on offerer.id = o.offerer_id
            join swap_posts p on p.id = o.post_id join students poster on poster.id = p.student_id
-           where o.status = 'pending' and (offerer.username in ('jordan', 'mei') or poster.username in ('jordan', 'mei'))`,
+           where o.status = 'pending' and (offerer.username in ('Jordan', 'Mei') or poster.username in ('Jordan', 'Mei'))`,
         )
         .get() as { n: number };
       db.close();
       expect(pending.n).toBe(0);
 
-      const jordan = await demoCookie("jordan", server.baseUrl);
-      const mei = await demoCookie("mei", server.baseUrl);
+      const jordan = await demoCookie("Jordan", server.baseUrl);
+      const mei = await demoCookie("Mei", server.baseUrl);
       const swappedPath = `/posts/${post[0].id}/`;
       expect(text((await page(swappedPath, jordan, server.baseUrl)).querySelector(".swapped"))).toBe(
-        `Swapped: jordan moves to ${label(WED_1530)}, mei moves to ${label(WED_14)}. Make the change in MyTimetable. This app can't.`,
+        `Swapped: Jordan moves to ${label(WED_1530)}, Mei moves to ${label(WED_14)}. Make the change in MyTimetable. This app can't.`,
       );
       const board = await page("/", jordan, server.baseUrl);
       expect(board.querySelector('#your-post ~ .your-swap-panel a[href="/posts/new/"]')?.textContent?.trim()).toBe("Post a swap");
       expect(board.querySelector(`#your-post ~ .your-swap-panel p a[href="${swappedPath}"]`)).not.toBeNull();
       // the swapped post is off the board for everyone
-      expect([...board.querySelectorAll("#open-posts ~ .board-post h3")].map((h) => text(h))).toEqual(["lena", "priya", "alex"]);
+      expect([...board.querySelectorAll("#open-posts ~ .board-post h3")].map((h) => text(h))).toEqual(["Lena", "Priya", "Alex"]);
       const meiLines = [...(await page("/", mei, server.baseUrl)).querySelectorAll("#your-offers ~ ul .own-offer")].map((el) => text(el));
-      expect(meiLines).toEqual([`jordan's post You would leave ${label(WED_1530)} Accepted`]);
+      expect(meiLines).toEqual([`Jordan's post You would leave ${label(WED_1530)} Accepted`]);
     } finally {
       await server.stop();
     }

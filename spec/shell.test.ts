@@ -73,7 +73,7 @@ describe("the attention marker (0058)", () => {
     expect(text(quiet)).toBe("Messages");
     expect(quiet?.hasAttribute("data-attention")).toBe(false);
 
-    const alex = await demoCookie("alex");
+    const alex = await demoCookie("Alex");
     const sent = await fetch(new URL(`/messages/${username}/send`, baseUrl), {
       method: "POST",
       headers: { origin: baseUrl, cookie: alex },

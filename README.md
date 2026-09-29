@@ -8,7 +8,7 @@ student who's happy to swap says so, and the poster accepts or declines. It
 makes swapping visible, discussable and agreed by both students — it cannot
 change a real ANU allocation, and nothing here is official.
 
-All of it is built and deployed: the login and seven demo students, the board
+All of it is built and deployed: the login and eight demo students, the board
 of swap posts, editing and withdrawing a post, offers with accept and decline,
 comments, private messages, live updates and the transit-board look. The site
 calls itself "Swap Board", and its classes are crit-group sessions, not
@@ -41,9 +41,9 @@ a demo student means anyone. They are stored unencrypted, and whoever runs
 the site can read them. There is no rate limiting, password reset or account
 deletion.
 
-**Seven demo students, one shared password.** The login page has a
-one-click button for each of `alex`, `priya`, `sam`, `lena`, `jordan`, `mei`
-and `noah`, plus "Random demo student". They share the password
+**Eight demo students, one shared password.** The login page has a
+one-click button for each of `Alex`, `Priya`, `Sam`, `Lena`, `Jordan`, `Mei`,
+`Noah` and `Zara`, plus "Random demo student". They share the password
 `demo-student`, published here, for anyone who would rather type it in the
 ordinary form. Their names are taken: signing up as one fails like any other
 duplicate. The demo students are written once, when the database has none;

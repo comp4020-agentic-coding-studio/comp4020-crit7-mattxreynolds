@@ -13,7 +13,7 @@ import { spawnServer } from "./spawn-server";
 // SQLite file directly.
 const baseUrl = inject("baseUrl");
 
-const DEMO_USERNAMES = ["alex", "priya", "sam", "lena", "jordan", "mei", "noah"];
+const DEMO_USERNAMES = ["Alex", "Priya", "Sam", "Lena", "Jordan", "Mei", "Noah", "Zara"];
 const DEMO_PASSWORD = "demo-student";
 
 function postForm(origin: string, path: string, body: Record<string, string>) {
@@ -42,7 +42,7 @@ async function loginPage(path = "/login/"): Promise<Document> {
 }
 
 describe("the demo seed", () => {
-  it("leaves a fresh database with exactly the seven demo students, each able to log in with demo-student", async () => {
+  it("leaves a fresh database with exactly the eight demo students, each able to log in with demo-student", async () => {
     const dbPath = join(mkdtempSync(join(tmpdir(), "demo-seed-fresh-")), "test.db");
     const server = await spawnServer(dbPath);
     try {
@@ -63,6 +63,27 @@ describe("the demo seed", () => {
     }
   }, 30_000);
 
+  it("gives Zara no post, offers, comments or private messages, and logs a demo name typed in lower case in", async () => {
+    const dbPath = join(mkdtempSync(join(tmpdir(), "demo-seed-zara-")), "test.db");
+    const server = await spawnServer(dbPath);
+    try {
+      const db = new Database(dbPath, { readonly: true });
+      const zara = (db.prepare("select id from students where username = 'Zara'").get() as { id: number }).id;
+      const count = (sql: string) => (db.prepare(sql).get({ zara }) as { n: number }).n;
+      expect(count("select count(*) as n from swap_posts where student_id = @zara")).toBe(0);
+      expect(count("select count(*) as n from offers where offerer_id = @zara")).toBe(0);
+      expect(count("select count(*) as n from comments where author_id = @zara")).toBe(0);
+      expect(count("select count(*) as n from private_messages where sender_id = @zara or recipient_id = @zara")).toBe(0);
+      db.close();
+
+      const res = await postForm(server.baseUrl, "/api/login", { username: "zara", password: DEMO_PASSWORD, next: "/" });
+      expect(res.status).toBe(303);
+      expect(await loggedInAs(sessionCookieFrom(res) ?? "", server.baseUrl)).toBe("Zara");
+    } finally {
+      await server.stop();
+    }
+  }, 30_000);
+
   it("is not rewritten when demo students already exist: what was changed survives a restart", async () => {
     const dbPath = join(mkdtempSync(join(tmpdir(), "demo-seed-restart-")), "test.db");
     const first = await spawnServer(dbPath);
@@ -72,23 +93,23 @@ describe("the demo seed", () => {
     // directly: alex's stored password, and mei removed altogether. A boot
     // that reseeded would put both back.
     const db = new Database(dbPath);
-    db.prepare("update students set password_hash = 'changed:by-the-test' where username = 'alex'").run();
-    db.prepare("delete from students where username = 'mei'").run();
+    db.prepare("update students set password_hash = 'changed:by-the-test' where username = 'Alex'").run();
+    db.prepare("delete from students where username = 'Mei'").run();
     db.close();
 
     const second = await spawnServer(dbPath);
     await second.stop();
 
     const after = new Database(dbPath, { readonly: true });
-    const alex = after.prepare("select password_hash from students where username = 'alex'").get() as {
+    const alex = after.prepare("select password_hash from students where username = 'Alex'").get() as {
       password_hash: string;
     };
-    const mei = after.prepare("select count(*) as n from students where username = 'mei'").get() as { n: number };
+    const mei = after.prepare("select count(*) as n from students where username = 'Mei'").get() as { n: number };
     const total = after.prepare("select count(*) as n from students").get() as { n: number };
     after.close();
     expect(alex.password_hash).toBe("changed:by-the-test");
     expect(mei.n).toBe(0);
-    expect(total.n).toBe(6);
+    expect(total.n).toBe(7);
   }, 60_000);
 });
 
@@ -105,7 +126,7 @@ describe("a real student holding a demo name", () => {
 
     const second = await spawnServer(dbPath);
     try {
-      const res = await postForm(second.baseUrl, "/login/demo", { username: "alex", next: "/" });
+      const res = await postForm(second.baseUrl, "/login/demo", { username: "Alex", next: "/" });
       expect(sessionCookieFrom(res)).toBeNull();
     } finally {
       await second.stop();
@@ -121,12 +142,12 @@ describe("a real student holding a demo name", () => {
     const first = await spawnServer(dbPath);
     await first.stop();
     const db = new Database(dbPath);
-    db.prepare("update students set password_hash = ? where username = 'priya'").run(hashPassword("real-password-1"));
+    db.prepare("update students set password_hash = ? where username = 'Priya'").run(hashPassword("real-password-1"));
     db.close();
 
     const second = await spawnServer(dbPath);
     try {
-      const res = await postForm(second.baseUrl, "/login/demo", { username: "priya", next: "/" });
+      const res = await postForm(second.baseUrl, "/login/demo", { username: "Priya", next: "/" });
       expect(sessionCookieFrom(res)).toBeNull();
       expect(res.headers.get("location")).toContain("/login/");
     } finally {
@@ -136,7 +157,7 @@ describe("a real student holding a demo name", () => {
 });
 
 describe("the demo buttons on the login page", () => {
-  it("shows seven named one-click buttons and Random demo student, on /login/ and on logged-out /", async () => {
+  it("shows eight named one-click buttons and Random demo student, on /login/ and on logged-out /", async () => {
     for (const path of ["/login/", "/"]) {
       const doc = await loginPage(path);
       const labels = [...doc.querySelectorAll('form[action="/login/demo"] button')].map((b) =>
@@ -157,7 +178,7 @@ describe("the demo buttons on the login page", () => {
     }
   });
 
-  it("logs in as one of the seven from Random demo student", async () => {
+  it("logs in as one of the eight from Random demo student", async () => {
     const doc = await loginPage();
     const randomForm = [...doc.querySelectorAll('form[action="/login/demo"]')].find(
       (f) => f.querySelector("button")?.textContent?.trim() === "Random demo student",
@@ -173,17 +194,17 @@ describe("the demo buttons on the login page", () => {
   });
 
   it("lands on the page first asked for, like the password form", async () => {
-    const res = await postForm(baseUrl, "/login/demo", { username: "priya", next: "/some-protected-page" });
+    const res = await postForm(baseUrl, "/login/demo", { username: "Priya", next: "/some-protected-page" });
     expect(res.headers.get("location")).toBe("/some-protected-page");
 
-    const evil = await postForm(baseUrl, "/login/demo", { username: "priya", next: "https://evil.example.com" });
+    const evil = await postForm(baseUrl, "/login/demo", { username: "Priya", next: "https://evil.example.com" });
     expect(evil.headers.get("location")).toBe("/");
 
     const carried = await loginPage("/login/?next=%2Fsome-protected-page");
     const next = [...carried.querySelectorAll('form[action="/login/demo"] input[name="next"]')].map(
       (i) => (i as HTMLInputElement).value,
     );
-    expect(next).toEqual(Array(8).fill("/some-protected-page"));
+    expect(next).toEqual(Array(9).fill("/some-protected-page"));
   });
 
   it("does not log anyone in as a student who isn't a demo student, or with a made-up name", async () => {
@@ -216,7 +237,7 @@ describe("demo names are reserved", () => {
     const db = new Database(dbPath);
     // a partial seed is left alone on boot (0040), so mei and noah are free
     // rows-wise; the rule, not the seed, has to keep the names taken
-    db.prepare("delete from students where username in ('mei', 'noah')").run();
+    db.prepare("delete from students where username in ('Mei', 'Noah')").run();
     db.close();
 
     const second = await spawnServer(dbPath);

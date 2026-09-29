@@ -1,6 +1,6 @@
 # 0037. There are seven demo students with first-name usernames and one shared password, `demo-student`
 
-- Status: Accepted
+- Status: Superseded by 0059
 - Date: 2026-09-28
 - Decided by: Matt
 - Source: #12

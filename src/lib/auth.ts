@@ -36,7 +36,7 @@ export function signUp(username: string, password: string): SignUpResult {
   }
   // demo names are taken whether or not their rows are present (0037), so a
   // partly present seed can't let a real student register one
-  const isDemoName = DEMO_USERNAMES.some((name) => name === username.toLowerCase());
+  const isDemoName = DEMO_USERNAMES.some((name) => name.toLowerCase() === username.toLowerCase());
   if (isDemoName || findByUsername(username)) {
     return { ok: false, error: "That username is taken." };
   }
@@ -79,7 +79,7 @@ export function demoStudent(choice: string): Student | null {
       ? DEMO_USERNAMES[Math.floor(Math.random() * DEMO_USERNAMES.length)]
       : DEMO_USERNAMES.find((name) => name === choice);
   if (!username) return null;
-  const student = db.select().from(students).where(eq(students.username, username)).get();
+  const student = findByUsername(username);
   return student && verifyPassword(DEMO_PASSWORD, student.passwordHash) ? student : null;
 }
 

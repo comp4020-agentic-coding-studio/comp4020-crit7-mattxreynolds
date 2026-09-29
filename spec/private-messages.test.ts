@@ -476,26 +476,26 @@ describe("the demo seed's private messages (0038)", () => {
       db.close();
 
       expect(rows.map((r) => [r.sender, r.recipient, r.read_at !== null])).toEqual([
-        ["jordan", "mei", true],
-        ["mei", "jordan", true],
-        ["priya", "alex", false],
+        ["Jordan", "Mei", true],
+        ["Mei", "Jordan", true],
+        ["Priya", "Alex", false],
       ]);
       for (const row of rows) expect(row.created_at).toBeLessThan(Date.now());
       // the conversation is after the swap (0038)
-      for (const row of rows.filter((r) => r.sender === "jordan" || r.sender === "mei")) {
+      for (const row of rows.filter((r) => r.sender === "Jordan" || r.sender === "Mei")) {
         expect(row.created_at).toBeGreaterThan(row.swapped_at);
       }
 
       // and through the app, as each student sees it
-      const alex = await demoCookie("alex", server.baseUrl);
-      const fromPriya = await thread("priya", alex, server.baseUrl);
-      expect(fromPriya.map((r) => r.sender)).toEqual(["priya"]);
-      const jordan = await demoCookie("jordan", server.baseUrl);
-      expect((await thread("mei", jordan, server.baseUrl)).map((r) => r.sender)).toEqual(["jordan", "mei"]);
+      const alex = await demoCookie("Alex", server.baseUrl);
+      const fromPriya = await thread("Priya", alex, server.baseUrl);
+      expect(fromPriya.map((r) => r.sender)).toEqual(["Priya"]);
+      const jordan = await demoCookie("Jordan", server.baseUrl);
+      expect((await thread("Mei", jordan, server.baseUrl)).map((r) => r.sender)).toEqual(["Jordan", "Mei"]);
       // noah is in no conversation; alex has none with jordan
-      const noah = await demoCookie("noah", server.baseUrl);
-      expect(await thread("alex", noah, server.baseUrl)).toEqual([]);
-      expect(await thread("jordan", alex, server.baseUrl)).toEqual([]);
+      const noah = await demoCookie("Noah", server.baseUrl);
+      expect(await thread("Alex", noah, server.baseUrl)).toEqual([]);
+      expect(await thread("Jordan", alex, server.baseUrl)).toEqual([]);
     } finally {
       await server.stop();
     }

@@ -111,7 +111,7 @@ const [MON_14, MON_1530, WED_9, WED_1030, WED_14, WED_1530] = (
 // added to, and real students with rows of their own, some involving a demo
 // student and some not.
 function mess(raw: Raw) {
-  const [alex, priya, noah, mei] = ["alex", "priya", "noah", "mei"].map((u) => idOf(raw, u));
+  const [alex, priya, noah, mei] = ["Alex", "Priya", "Noah", "Mei"].map((u) => idOf(raw, u));
   const ria = realStudent(raw, "ria");
   const bo = realStudent(raw, "bo");
   const cy = realStudent(raw, "cy");
@@ -216,17 +216,40 @@ describe("resetDemo", () => {
 
   it("brings back a missing demo student and leaves a real student who differs from a demo name only by case alone", () => {
     const { raw, db } = openDb();
-    raw.prepare("delete from students where username = 'noah'").run();
-    raw.prepare("delete from students where username = 'alex'").run();
+    raw.prepare("delete from students where username = 'Noah'").run();
+    raw.prepare("delete from students where username = 'Alex'").run();
     const realHash = hashPassword("real-password-2");
-    raw.prepare("insert into students (username, password_hash) values ('Alex', ?)").run(realHash);
+    raw.prepare("insert into students (username, password_hash) values ('ALEX', ?)").run(realHash);
     resetDemo(db);
     expect(all(raw, "select username from students order by username")).toEqual(
-      ["Alex", "jordan", "lena", "mei", "noah", "priya", "sam"].map((username) => ({ username })),
+      ["ALEX", "Jordan", "Lena", "Mei", "Noah", "Priya", "Sam", "Zara"].map((username) => ({ username })),
     );
-    expect(raw.prepare("select password_hash from students where username = 'Alex'").get()).toEqual({ password_hash: realHash });
-    // the real Alex has none of the seed's alex rows
-    expect(raw.prepare("select count(*) as n from swap_posts where student_id = ?").get(idOf(raw, "Alex"))).toEqual({ n: 0 });
+    expect(raw.prepare("select password_hash from students where username = 'ALEX'").get()).toEqual({ password_hash: realHash });
+    // the real ALEX has none of the seed's Alex rows
+    expect(raw.prepare("select count(*) as n from swap_posts where student_id = ?").get(idOf(raw, "ALEX"))).toEqual({ n: 0 });
+  });
+
+  it("renames the lowercase demo accounts of an older seed in place, and a boot on them writes nothing", () => {
+    const fresh = openDb();
+    const freshState = demoState(fresh.raw);
+    const { raw, db } = openDb();
+    raw.prepare("update students set username = lower(username)").run();
+    const idsBefore = all<{ id: number }>(raw, "select id from students order by id");
+    const counts = () =>
+      all(raw, "select (select count(*) from students) as students, (select count(*) from swap_posts) as posts, (select count(*) from offers) as offers");
+    const before = counts();
+
+    // a boot leaves them alone (0040), matched ignoring case (0059)
+    seedDemoStudents(db);
+    expect(counts()).toEqual(before);
+    expect(all<{ username: string }>(raw, "select username from students order by id")[0].username).toBe("alex");
+
+    resetDemo(db);
+    expect(all<{ id: number }>(raw, "select id from students order by id").slice(0, idsBefore.length)).toEqual(idsBefore);
+    expect(demoState(raw)).toEqual(freshState);
+    expect(all<{ username: string }>(raw, "select username from students order by username").map((r) => r.username)).toEqual(
+      [...DEMO_USERNAMES].sort(),
+    );
   });
 
   it("is idempotent", () => {
@@ -235,7 +258,7 @@ describe("resetDemo", () => {
     const once = demoState(raw);
     resetDemo(db);
     expect(demoState(raw)).toEqual(once);
-    expect(isDemo("alex")).toBe(true);
+    expect(isDemo("Alex")).toBe(true);
   });
 
   it("runs in one transaction: a failure part-way leaves the database as it was", () => {
@@ -268,13 +291,13 @@ describe("the board after a reset", () => {
     raw.prepare("update swap_posts set status = 'withdrawn'").run();
     raw.prepare("update offers set status = 'declined'").run();
     raw.prepare("update comments set deleted_at = 1").run();
-    raw.prepare("delete from students where username = 'noah'").run();
+    raw.prepare("delete from students where username = 'Noah'").run();
     resetDemo(db);
     raw.close();
 
     const server = await spawnServer(path);
     try {
-      const noah = await demoCookie("noah", server.baseUrl);
+      const noah = await demoCookie("Noah", server.baseUrl);
       const doc = await page("/", noah, server.baseUrl);
       const entries = [...doc.querySelectorAll("#open-posts ~ .board-post")].map((el) => ({
         poster: text(el.querySelector("h3")),
@@ -283,9 +306,9 @@ describe("the board after a reset", () => {
       }));
       expect(entries.length).toBe(3);
       const by = Object.fromEntries(entries.map((e) => [e.poster, e]));
-      expect(by.alex).toMatchObject({ offers: "2 pending offers", comments: "2 comments" });
-      expect(by.priya).toMatchObject({ offers: "1 pending offer", comments: "0 comments" });
-      expect(by.lena).toMatchObject({ offers: "0 pending offers", comments: "0 comments" });
+      expect(by.Alex).toMatchObject({ offers: "2 pending offers", comments: "2 comments" });
+      expect(by.Priya).toMatchObject({ offers: "1 pending offer", comments: "0 comments" });
+      expect(by.Lena).toMatchObject({ offers: "0 pending offers", comments: "0 comments" });
     } finally {
       await server.stop();
     }
@@ -351,7 +374,7 @@ describe("no route or page resets anything", () => {
     // a server of its own, so no other spec file is writing to the board
     const server = await spawnServer(join(mkdtempSync(join(tmpdir(), "seed-reset-routes-")), "routes.db"));
     try {
-      const cookie = await demoCookie("alex", server.baseUrl);
+      const cookie = await demoCookie("Alex", server.baseUrl);
       const before = boardText(await page("/", cookie, server.baseUrl));
       expect(before.length).toBe(3);
       for (const path of ["/reset/", "/seed/", "/seed/reset/", "/seed-reset/", "/api/reset", "/api/seed-reset", "/api/seed/reset", "/admin/reset/", "/api/demo/reset"]) {
@@ -371,7 +394,7 @@ describe("no route or page resets anything", () => {
   }, 60_000);
 
   it("shows no reset control on the board or the login page", async () => {
-    const cookie = await demoCookie("alex");
+    const cookie = await demoCookie("Alex");
     for (const doc of [await page("/", cookie), await page("/login/")]) {
       const controls = [...doc.querySelectorAll("button, input[type=submit], a")].map((el) => text(el) || el.getAttribute("value") || "");
       expect(controls.filter((label) => /reset/i.test(label))).toEqual([]);

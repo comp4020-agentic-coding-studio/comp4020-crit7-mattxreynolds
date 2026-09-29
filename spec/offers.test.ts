@@ -430,9 +430,9 @@ describe("the demo seed's offers (0038)", () => {
       db.close();
 
       expect(rows.map((r) => [r.offerer, r.poster, r.offered, r.status, r.closedReason])).toEqual([
-        ["priya", "alex", WED_9, "pending", null],
-        ["sam", "alex", WED_1030, "pending", null],
-        ["lena", "priya", MON_1530, "pending", null],
+        ["Priya", "Alex", WED_9, "pending", null],
+        ["Sam", "Alex", WED_1030, "pending", null],
+        ["Lena", "Priya", MON_1530, "pending", null],
       ]);
       for (const r of rows) {
         expect(r.at, r.offerer).toBeGreaterThan(r.postedAt);
@@ -441,31 +441,31 @@ describe("the demo seed's offers (0038)", () => {
       }
 
       // what a tutor sees: alex's board and post page, sam's and noah's views
-      const alex = await demoCookie("alex", server.baseUrl);
+      const alex = await demoCookie("Alex", server.baseUrl);
       const board = await page("/", alex, server.baseUrl);
       expect(text(board.querySelector("#your-post ~ .your-swap-panel .board-post .offer-count"))).toBe("2 pending offers");
       const alexPost = board.querySelector('#your-post ~ .your-swap-panel .board-post a[href^="/posts/"]')?.getAttribute("href") ?? "";
       const offers = [...(await page(alexPost, alex, server.baseUrl)).querySelectorAll(".offers li .offer-text")].map((li) => text(li));
       expect(offers).toEqual([
-        `priya would leave ${classLabel(CLASSES[2])}`,
-        `sam would leave ${classLabel(CLASSES[3])}`,
+        `Priya would leave ${classLabel(CLASSES[2])}`,
+        `Sam would leave ${classLabel(CLASSES[3])}`,
       ]);
 
-      const noah = await demoCookie("noah", server.baseUrl);
+      const noah = await demoCookie("Noah", server.baseUrl);
       const counts = [...(await page("/", noah, server.baseUrl)).querySelectorAll("#open-posts ~ .board-post")].map((el) => [
         text(el.querySelector("h3")),
         text(el.querySelector(".offer-count")),
       ]);
       expect(counts).toEqual([
-        ["lena", "0 pending offers"],
-        ["priya", "1 pending offer"],
-        ["alex", "2 pending offers"],
+        ["Lena", "0 pending offers"],
+        ["Priya", "1 pending offer"],
+        ["Alex", "2 pending offers"],
       ]);
       expect((await page("/", noah, server.baseUrl)).querySelector("#your-offers")).toBeNull();
 
-      const sam = await demoCookie("sam", server.baseUrl);
+      const sam = await demoCookie("Sam", server.baseUrl);
       const yours = [...(await page("/", sam, server.baseUrl)).querySelectorAll("#your-offers ~ ul .own-offer")].map((el) => text(el));
-      expect(yours).toEqual([`alex's post You would leave ${classLabel(CLASSES[3])} Pending Withdraw`]);
+      expect(yours).toEqual([`Alex's post You would leave ${classLabel(CLASSES[3])} Pending Withdraw`]);
     } finally {
       await server.stop();
     }
@@ -485,19 +485,19 @@ describe("the demo seed's offers (0038)", () => {
         );
       };
       expect(await lines()).toMatchObject({
-        alex: "2 offers to answer · 1 unread message",
-        priya: "1 offer to answer · 1 pending offer",
-        sam: "1 pending offer",
-        lena: "open post · 1 pending offer",
-        noah: "no post yet",
+        Alex: "2 offers to answer · 1 unread message",
+        Priya: "1 offer to answer · 1 pending offer",
+        Sam: "1 pending offer",
+        Lena: "open post · 1 pending offer",
+        Noah: "no post yet",
       });
 
       // noah offers on lena's post: noah's line and lena's both move
-      const noah = await demoCookie("noah", server.baseUrl);
+      const noah = await demoCookie("Noah", server.baseUrl);
       const lenaPost = (await page("/", noah, server.baseUrl)).querySelector('#open-posts ~ .board-post a[href^="/posts/"]')?.getAttribute("href") ?? "";
       const res = await submitOffer(noah, lenaPost.match(/\d+/)?.[0] ?? "", { class: CLASSES[4].id }, server.baseUrl);
       expect(res.status).toBe(303);
-      expect(await lines()).toMatchObject({ lena: "1 offer to answer · 1 pending offer", noah: "1 pending offer" });
+      expect(await lines()).toMatchObject({ Lena: "1 offer to answer · 1 pending offer", Noah: "1 pending offer" });
 
       const raw = await (await fetch(new URL("/login/", server.baseUrl))).text();
       expect(raw).not.toContain("would leave");

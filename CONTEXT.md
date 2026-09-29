@@ -97,8 +97,8 @@ Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
   (`docs/decisions/0011`).
 - **Demo student**: a seeded student whose password is shared and published,
   reachable from the login page in one click. Fixed by #5 (`0014`). There are
-  seven: alex, priya, sam, lena, jordan, mei and noah, with the password
-  `demo-student` (#12, `docs/decisions/0037`).
+  eight, capitalised: Alex, Priya, Sam, Lena, Jordan, Mei, Noah and Zara, with
+  the password `demo-student` (#12, #44, `docs/decisions/0059`).
 - **Demo seed**: the demo students and the posts, offers, comments and private
   messages written for them (`0038`). It is written only when no demo student
   exists, never on every boot (`0040`).

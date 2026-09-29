@@ -477,9 +477,9 @@ describe("the demo seed's comments", () => {
       }[];
       db.close();
 
-      expect(rows.filter((r) => r.poster === "alex").map((r) => r.author)).toEqual(["sam", "alex"]);
-      const mei = rows.filter((r) => r.poster === "jordan");
-      expect(mei.map((r) => r.author)).toEqual(["mei"]);
+      expect(rows.filter((r) => r.poster === "Alex").map((r) => r.author)).toEqual(["Sam", "Alex"]);
+      const mei = rows.filter((r) => r.poster === "Jordan");
+      expect(mei.map((r) => r.author)).toEqual(["Mei"]);
       expect(mei[0]?.status).toBe("swapped");
       expect(mei[0]?.created_at).toBeLessThan(mei[0]?.swapped_at ?? 0);
       expect(mei[0]?.created_at).toBeGreaterThan(mei[0]?.posted_at ?? Infinity);
@@ -491,21 +491,21 @@ describe("the demo seed's comments", () => {
       }
 
       // and through the app: alex's board line and post page, and jordan's post
-      const alex = await demoCookie("alex", server.baseUrl);
+      const alex = await demoCookie("Alex", server.baseUrl);
       const board = await page("/", alex, server.baseUrl);
       expect(text(board.querySelector("#your-post ~ .your-swap-panel .board-post .comment-count"))).toBe("2 comments");
-      const alexPostId = rows.find((r) => r.poster === "alex")?.post;
+      const alexPostId = rows.find((r) => r.poster === "Alex")?.post;
       const doc = await page(`/posts/${alexPostId}/`, alex, server.baseUrl);
       const entries = [...doc.querySelectorAll(".comment")].map((li) => [
         text(li.querySelector("strong")),
         li.querySelector(".poster-tag") !== null,
       ]);
       expect(entries).toEqual([
-        ["sam", false],
-        ["alex", true],
+        ["Sam", false],
+        ["Alex", true],
       ]);
       const jordanDoc = await page(`/posts/${mei[0]?.post}/`, alex, server.baseUrl);
-      expect(text(jordanDoc.querySelector(".comment strong"))).toBe("mei");
+      expect(text(jordanDoc.querySelector(".comment strong"))).toBe("Mei");
       expect(jordanDoc.querySelector('form[action$="/comments"]')).toBeNull();
     } finally {
       await server.stop();

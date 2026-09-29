@@ -179,8 +179,8 @@ for (const [route, ownerCookie] of LOGGED_IN_ROUTES) describe(`invariants: ${rou
     });
   }
   if (route === "/messages/alex/") {
-    it("is the conversation with alex, not the not-found page", () => {
-      expect(doc.querySelector("h1")?.textContent).toBe("Conversation with alex");
+    it("is the conversation with Alex, not the not-found page", () => {
+      expect(doc.querySelector("h1")?.textContent).toBe("Conversation with Alex");
     });
   }
   if (route === owned.confirmPath) {

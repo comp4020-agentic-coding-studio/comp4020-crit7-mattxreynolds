@@ -30,15 +30,15 @@ test("sign up, reach the board, and log out", async ({ page }, testInfo) => {
 // the random button, with nothing typed.
 test("log in with one click as a demo student", async ({ page }, testInfo) => {
   await page.goto("/login/");
-  for (const name of ["alex", "priya", "sam", "lena", "jordan", "mei", "noah", "Random demo student"]) {
+  for (const name of ["Alex", "Priya", "Sam", "Lena", "Jordan", "Mei", "Noah", "Zara", "Random demo student"]) {
     await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
   }
   await page.screenshot({ path: screenshotPath(testInfo, "login"), fullPage: true });
 
-  await page.getByRole("button", { name: "priya", exact: true }).click();
+  await page.getByRole("button", { name: "Priya", exact: true }).click();
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("heading", { name: "Agentic Coding Studio" })).toBeVisible();
-  await expect(page.locator(".nav-username")).toHaveText("priya");
+  await expect(page.locator(".nav-username")).toHaveText("Priya");
 
   await logOut(page);
   await page.getByRole("button", { name: "Random demo student" }).click();

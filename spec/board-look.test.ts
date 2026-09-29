@@ -56,7 +56,7 @@ describe("the exchange row", () => {
       });
     }
     // and every other post on the board, the seeded ones included
-    const all = entries(await page("/", await demoCookie("noah")));
+    const all = entries(await page("/", await demoCookie("Noah")));
     expect(all.length).toBeGreaterThan(1);
     for (const el of all) {
       const row = exchangeOf(el);
@@ -105,7 +105,7 @@ describe("the attention marker on a pending-offer count (0058)", () => {
       expect(count?.hasAttribute("data-attention")).toBe(false);
     }
     // the seeded board has pending offers on other people's posts too
-    const others = [...(await page("/", await demoCookie("noah"))).querySelectorAll("#open-posts ~ .board-post .offer-count")];
+    const others = [...(await page("/", await demoCookie("Noah"))).querySelectorAll("#open-posts ~ .board-post .offer-count")];
     expect(others.some((c) => !text(c).startsWith("0 "))).toBe(true);
     for (const count of others) expect(count.hasAttribute("data-attention")).toBe(false);
   });

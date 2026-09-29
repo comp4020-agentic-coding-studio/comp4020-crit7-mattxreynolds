@@ -111,7 +111,7 @@ describe("creating a swap post", () => {
     await server.stop();
     const db = new Database(dbPath);
     try {
-      const noah = db.prepare("select id from students where username = 'noah'").get() as { id: number };
+      const noah = db.prepare("select id from students where username = 'Noah'").get() as { id: number };
       const insert = db.prepare(
         "insert into swap_posts (student_id, leaving_class_id, posted_at) values (?, 'shitao', ?)",
       );
@@ -311,7 +311,7 @@ describe("times", () => {
     const migrated = await spawnServer(dbPath);
     await migrated.stop();
     const db = new Database(dbPath);
-    const student = db.prepare("select id from students where username = 'noah'").get() as { id: number };
+    const student = db.prepare("select id from students where username = 'Noah'").get() as { id: number };
     const posted = db
       .prepare("insert into swap_posts (student_id, leaving_class_id, posted_at) values (?, 'shitao', ?) returning id")
       .get(student.id, Date.parse("2026-09-28T04:05:00Z")) as { id: number };
@@ -321,7 +321,7 @@ describe("times", () => {
     for (const TZ of ["Pacific/Honolulu", "Asia/Kolkata", "UTC"]) {
       const server = await spawnServer(dbPath, { TZ });
       try {
-        const cookie = await demoCookie("priya", server.baseUrl);
+        const cookie = await demoCookie("Priya", server.baseUrl);
         const doc = await page(`/posts/${posted.id}/`, cookie, server.baseUrl);
         expect(text(doc.querySelector("main")), TZ).toContain("Mon 28 Sep, 14:05");
       } finally {
@@ -376,10 +376,10 @@ describe("the demo seed's posts", () => {
       db.close();
 
       expect(posts.map((p) => [p.username, p.leaving, p.joins, p.message, p.status])).toEqual([
-        ["alex", MON_14, [WED_9, WED_1030].sort().join(","), "Clashes with my lab.", "open"],
-        ["jordan", WED_14, WED_1530, null, "swapped"], // #21: off the board
-        ["lena", MON_1530, [WED_14, WED_1530].sort().join(","), null, "open"],
-        ["priya", WED_9, [MON_14, MON_1530].sort().join(","), null, "open"],
+        ["Alex", MON_14, [WED_9, WED_1030].sort().join(","), "Clashes with my lab.", "open"],
+        ["Jordan", WED_14, WED_1530, null, "swapped"], // #21: off the board
+        ["Lena", MON_1530, [WED_14, WED_1530].sort().join(","), null, "open"],
+        ["Priya", WED_9, [MON_14, MON_1530].sort().join(","), null, "open"],
       ]);
       const ats = posts.map((p) => p.at);
       for (const at of ats) {
@@ -389,10 +389,10 @@ describe("the demo seed's posts", () => {
       expect(new Set(ats).size).toBe(4);
 
       // and the board shows the three, newest first, to a student with no post
-      const noah = await demoCookie("noah", server.baseUrl);
+      const noah = await demoCookie("Noah", server.baseUrl);
       const doc = await page("/", noah, server.baseUrl);
       const shown = [...doc.querySelectorAll("#open-posts ~ .board-post h3")].map((h) => text(h));
-      expect(shown).toEqual(["lena", "priya", "alex"]);
+      expect(shown).toEqual(["Lena", "Priya", "Alex"]);
       expect(text(doc.querySelector('#your-post ~ .your-swap-panel a[href="/posts/new/"]'))).toBe("Post a swap");
     } finally {
       await server.stop();
@@ -413,20 +413,21 @@ describe("the demo seed's posts", () => {
         );
       };
       expect(await lines()).toEqual({
-        alex: "2 offers to answer · 1 unread message",
-        priya: "1 offer to answer · 1 pending offer",
-        sam: "1 pending offer",
-        lena: "open post · 1 pending offer",
-        jordan: "no post yet",
-        mei: "no post yet",
-        noah: "no post yet",
+        Alex: "2 offers to answer · 1 unread message",
+        Priya: "1 offer to answer · 1 pending offer",
+        Sam: "1 pending offer",
+        Lena: "open post · 1 pending offer",
+        Jordan: "no post yet",
+        Mei: "no post yet",
+        Noah: "no post yet",
+        Zara: "no post yet",
       });
 
       // it is live: noah posts and the line changes; nothing of the post leaks
-      const noah = await demoCookie("noah", server.baseUrl);
+      const noah = await demoCookie("Noah", server.baseUrl);
       const res = await submitPost(noah, { ...OK, message: "secret-message-text" }, server.baseUrl);
       expect(res.status).toBe(303);
-      expect((await lines()).noah).toBe("open post");
+      expect((await lines()).Noah).toBe("open post");
       const raw = await (await fetch(new URL("/login/", server.baseUrl))).text();
       expect(raw).not.toContain("secret-message-text");
     } finally {

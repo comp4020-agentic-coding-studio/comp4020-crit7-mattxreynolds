@@ -1,13 +1,13 @@
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { CLASSES, type ClassId } from "./classes";
-import { hashPassword } from "./password";
+import { hashPassword, verifyPassword } from "./password";
 import { classes, comments, offers, privateMessages, students, swapPostJoinClasses, swapPosts } from "./schema";
 
-// The demo students (0014, 0037): first-name usernames sharing one published
-// password, and the posts, offers, comments and private messages written for
-// them (0038).
-export const DEMO_USERNAMES = ["alex", "priya", "sam", "lena", "jordan", "mei", "noah"] as const;
+// The demo students (0014, 0059): capitalised first-name usernames sharing one
+// published password, and the posts, offers, comments and private messages
+// written for them (0038).
+export const DEMO_USERNAMES = ["Alex", "Priya", "Sam", "Lena", "Jordan", "Mei", "Noah", "Zara"] as const;
 export const DEMO_PASSWORD = "demo-student";
 
 // The classes come from the committed seed file (src/lib/classes.ts) on every
@@ -28,26 +28,26 @@ export function seedClasses(db: BetterSQLite3Database): void {
 // the seed runs: alex's is the oldest, lena's the newest.
 const HOUR = 60 * 60 * 1000;
 const DEMO_POSTS: { username: string; leaving: ClassId; joins: ClassId[]; message?: string; hoursAgo: number }[] = [
-  { username: "alex", leaving: "shitao", joins: ["baishi", "dachi"], message: "Clashes with my lab.", hoursAgo: 68 },
-  { username: "priya", leaving: "baishi", joins: ["shitao", "bada"], hoursAgo: 40 },
-  { username: "lena", leaving: "bada", joins: ["yunlin", "liuru"], hoursAgo: 5 },
+  { username: "Alex", leaving: "shitao", joins: ["baishi", "dachi"], message: "Clashes with my lab.", hoursAgo: 68 },
+  { username: "Priya", leaving: "baishi", joins: ["shitao", "bada"], hoursAgo: 40 },
+  { username: "Lena", leaving: "bada", joins: ["yunlin", "liuru"], hoursAgo: 5 },
 ];
 
 // The pending offers (0038), each after the post it is on. An offered class is
 // the offerer's own leaving class where they have a post (priya's is Wed 09:00,
 // lena's Mon 15:30), so the seed never contradicts itself; sam has no post.
 const DEMO_OFFERS: { offerer: string; poster: string; offered: ClassId; hoursAgo: number }[] = [
-  { offerer: "priya", poster: "alex", offered: "baishi", hoursAgo: 60 },
-  { offerer: "sam", poster: "alex", offered: "dachi", hoursAgo: 30 },
-  { offerer: "lena", poster: "priya", offered: "bada", hoursAgo: 20 },
+  { offerer: "Priya", poster: "Alex", offered: "baishi", hoursAgo: 60 },
+  { offerer: "Sam", poster: "Alex", offered: "dachi", hoursAgo: 30 },
+  { offerer: "Lena", poster: "Priya", offered: "bada", hoursAgo: 20 },
 ];
 
 // The comments on open posts (0038), each after its post: sam asks alex a
 // question and alex, the poster, answers it (that comment carries the "poster"
 // tag).
 const DEMO_COMMENTS: { author: string; poster: string; body: string; hoursAgo: number }[] = [
-  { author: "sam", poster: "alex", body: "Would you rather have Wed 09:00 or Wed 10:30?", hoursAgo: 50 },
-  { author: "alex", poster: "alex", body: "Either is fine. It is only Mon 14:00 that clashes with my lab.", hoursAgo: 46 },
+  { author: "Sam", poster: "Alex", body: "Would you rather have Wed 09:00 or Wed 10:30?", hoursAgo: 50 },
+  { author: "Alex", poster: "Alex", body: "Either is fine. It is only Mon 14:00 that clashes with my lab.", hoursAgo: 46 },
 ];
 
 // The private messages (0038). priya writes to alex about her offer and he has
@@ -62,22 +62,22 @@ const DEMO_PRIVATE_MESSAGES: {
   read: boolean;
 }[] = [
   {
-    sender: "priya",
-    recipient: "alex",
+    sender: "Priya",
+    recipient: "Alex",
     body: "Hi Alex, I have offered my Wed 09:00. Are you free to sort out the MyTimetable change today?",
     hoursAgo: 36,
     read: false,
   },
   {
-    sender: "jordan",
-    recipient: "mei",
+    sender: "Jordan",
+    recipient: "Mei",
     body: "Thanks for the swap. I have moved to Wed 15:30 in MyTimetable.",
     hoursAgo: 58,
     read: true,
   },
   {
-    sender: "mei",
-    recipient: "jordan",
+    sender: "Mei",
+    recipient: "Jordan",
     body: "Done on my side too, I am in Wed 14:00 now. See you Wednesday!",
     hoursAgo: 57,
     read: true,
@@ -101,16 +101,21 @@ const DEMO_SWAP: {
   commentBody: string;
   commentedHoursAgo: number;
 } = {
-  poster: "jordan",
+  poster: "Jordan",
   leaving: "yunlin",
   join: "liuru",
-  offerer: "mei",
+  offerer: "Mei",
   postedHoursAgo: 71,
   offeredHoursAgo: 65,
   swappedHoursAgo: 60,
   commentBody: "I hold Wed 15:30 and would happily move, so I have made an offer.",
   commentedHoursAgo: 64,
 };
+
+// Usernames are unique ignoring case (0011) and a volume seeded before 0059
+// holds the lowercase names, so a demo student is matched ignoring case.
+const lowerUsername = sql`lower(${students.username})`;
+const lowerDemoUsernames = DEMO_USERNAMES.map((name) => name.toLowerCase());
 
 type Tx = Parameters<Parameters<BetterSQLite3Database["transaction"]>[0]>[0];
 
@@ -122,7 +127,7 @@ export function seedDemoStudents(db: BetterSQLite3Database): void {
   const existing = db
     .select({ id: students.id })
     .from(students)
-    .where(inArray(students.username, [...DEMO_USERNAMES]))
+    .where(inArray(lowerUsername, lowerDemoUsernames))
     .get();
   if (existing) return;
 
@@ -136,6 +141,17 @@ export function seedDemoStudents(db: BetterSQLite3Database): void {
 // written back. Real-only rows are never matched.
 export function resetDemo(db: BetterSQLite3Database): void {
   db.transaction((tx) => {
+    // an account seeded with a lowercase name (before 0059) is renamed in
+    // place, so it keeps its id and what refers to it; only one still holding
+    // the demo password, so a real student who holds a demo name in another
+    // case keeps their account and is left alone
+    for (const name of DEMO_USERNAMES) {
+      const old = tx.select().from(students).where(sql`lower(${students.username}) = ${name.toLowerCase()}`).get();
+      if (old && old.username !== name && verifyPassword(DEMO_PASSWORD, old.passwordHash)) {
+        tx.update(students).set({ username: name }).where(eq(students.id, old.id)).run();
+      }
+    }
+
     const demoIds = tx
       .select({ id: students.id })
       .from(students)
