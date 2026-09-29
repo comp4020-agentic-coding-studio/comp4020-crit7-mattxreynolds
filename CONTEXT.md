@@ -97,6 +97,13 @@ Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
 - **Seed reset**: `pnpm seed:reset` (on Fly `node dist/seed-reset.mjs`, `0049`), run only by the operator. It deletes
   everything involving a demo student (including a real student's post swapped
   with one) and writes the demo seed again. Fixed by #12 (`0040`, `0041`).
+- **Wordmark**: the header name "Swap Board". Not "Tutorial Swap": a class
+  here is a crit-group session, not a tutorial. Fixed by #30
+  (`docs/decisions/0051`).
+- **Unofficial footer**: the line on every page, "Unofficial, student-built
+  COMP4020 demo. Not an ANU system: it can't change your real class
+  allocation." It sits beside, not in place of, the demo-login notice.
+  Fixed by #30 (`0052`).
 
 ## Harness
 
