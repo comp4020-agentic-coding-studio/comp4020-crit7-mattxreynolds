@@ -53,6 +53,9 @@ Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
 - **Board**: the page at `/` listing every open swap post, newest first,
   with the student's own post pinned under "Your post" and the offers
   they've made under "Your offers". Fixed by #8 (`docs/decisions/0019`).
+- **Side column**: on a wide screen, the board column holding "Your post" and
+  "Your offers" beside "Open posts"; on a narrow screen it stacks above them.
+  Fixed by #28 (`0054`).
 - **Post page**: one swap post's own page, `/posts/<id>/`, where its poster
   sees offers. It still loads after the post is withdrawn. Fixed by #8
   (`0020`).
