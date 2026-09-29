@@ -1,0 +1,16 @@
+---
+import PostLive from "../../../components/PostLive.astro";
+import { getPost } from "../../../lib/posts";
+
+// A post page's live part alone, for the refresh on "post N changed" (0044):
+// the same server-rendered HTML /posts/N/ puts inside #post-live, for this
+// viewer. A logged-out request gets a 401 from src/middleware.ts (0013).
+const student = Astro.locals.student;
+if (!student) return new Response(null, { status: 401 });
+const id = /^[0-9]+$/.test(Astro.params.id ?? "") ? Number(Astro.params.id) : null;
+const post = id === null ? null : getPost(id);
+if (!post) return new Response(null, { status: 404 });
+Astro.response.headers.set("cache-control", "no-store");
+---
+
+<PostLive post={post} student={student} />

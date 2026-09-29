@@ -1,11 +1,8 @@
 ---
 import LoginForm from "../components/LoginForm.astro";
-import PostEntry from "../components/PostEntry.astro";
+import BoardContent from "../components/BoardContent.astro";
 import Layout from "../layouts/Layout.astro";
-import OwnOffer from "../components/OwnOffer.astro";
 import { takeFlash } from "../lib/flash";
-import { offersMadeBy } from "../lib/offer-store";
-import { listOpenPosts, swappedPostIdFor } from "../lib/posts";
 
 // A logged-out visitor gets the login page here, in place, with a 200 (0048)
 // — the deploy probe and the link check both fetch "/" without following
@@ -13,18 +10,9 @@ import { listOpenPosts, swappedPostIdFor } from "../lib/posts";
 // this reason; every other protected page redirects instead.
 const student = Astro.locals.student;
 
-// The board (0019): every open post, newest first, with the student's own
-// pinned under "Your post" instead of repeated in the list.
+// The board (0019) is BoardContent; the notice is read here, once, and stays
+// out of the content the live refresh swaps (0042).
 const notice = student ? takeFlash(Astro.cookies) : null;
-const open = student ? listOpenPosts() : [];
-const mine = open.find((post) => post.studentId === student?.id);
-const others = open.filter((post) => post !== mine);
-// after an accept the poster's spot links to the swapped post until they post
-// again (0024)
-const swappedPostId = student && !mine ? swappedPostIdFor(student.id) : null;
-// "Your offers" (0019, 0025): every offer the student has made, pending first;
-// the section appears only once they have made one
-const madeOffers = student ? offersMadeBy(student.id) : [];
 ---
 
 <Layout title={student ? "Board" : "Log in"} student={student}>
@@ -36,38 +24,28 @@ const madeOffers = student ? offersMadeBy(student.id) : [];
           Logged in as <strong>{student.username}</strong>.
         </p>
         {notice && <p role="status">{notice}</p>}
-        <section aria-labelledby="your-post">
-          <h2 id="your-post">Your post</h2>
-          {mine ? <PostEntry post={mine} own /> : <a class="button" href="/posts/new/">Post a swap</a>}
-          {
-            swappedPostId !== null && (
-              <p class="swapped-line">
-                Your last post was swapped. <a href={`/posts/${swappedPostId}/`}>See the swapped post</a>.
-              </p>
-            )
-          }
-        </section>
-        {
-          madeOffers.length > 0 && (
-            <section aria-labelledby="your-offers">
-              <h2 id="your-offers">Your offers</h2>
-              <ul class="your-offers">
-                {madeOffers.map((offer) => (
-                  <li>
-                    <OwnOffer offer={offer} next="/" link />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )
-        }
-        <section aria-labelledby="open-posts">
-          <h2 id="open-posts">Open posts</h2>
-          {others.length === 0 ? <p>No other open swap posts.</p> : others.map((post) => <PostEntry post={post} />)}
-        </section>
+        <div id="board-live" data-live-url="/fragments/board/">
+          <BoardContent student={student} />
+        </div>
+        <div id="live-announce" class="visually-hidden" aria-live="polite"></div>
       </>
     ) : (
       <LoginForm next="/" error={null} />
     )
   }
 </Layout>
+
+<script>
+  import { boardRefetchOn, parseLiveEvent } from "../lib/live";
+  import { startLive } from "../scripts/live";
+
+  const container = document.getElementById("board-live");
+  if (container) {
+    startLive({
+      container,
+      url: container.dataset.liveUrl ?? "",
+      wants: (data) => boardRefetchOn(parseLiveEvent(data)),
+      announce: { region: document.getElementById("live-announce"), text: "Board updated" },
+    });
+  }
+</script>

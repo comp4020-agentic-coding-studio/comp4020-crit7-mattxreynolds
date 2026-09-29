@@ -1,36 +1,17 @@
 ---
-import OwnOffer from "../../components/OwnOffer.astro";
-import PostControls from "../../components/PostControls.astro";
+import PostLive from "../../components/PostLive.astro";
 import Layout from "../../layouts/Layout.astro";
-import { classLabel } from "../../lib/classes";
-import { acceptedSwapOn, declinedOfferOn, ownOfferOn, pendingOffersOn } from "../../lib/offer-store";
-import { countLabel, swappedSentence } from "../../lib/offers";
-import { getPost, withdrawnBySwap } from "../../lib/posts";
-import { formatCanberra } from "../../lib/time";
+import { getPost } from "../../lib/posts";
 
 // The post page (0020): the whole post, edited marker included (0018). A
 // withdrawn post still loads, says so with the time (and that a swap withdrew
 // it, 0024) and has no controls; a swapped one says who moved where. An id
-// that never existed is a 404. An open post renders three ways (0023): the
-// poster sees each pending offer and who made it, an offerer sees their own
-// offer and its status, and anyone else sees only the pending-offer count.
+// that never existed is a 404. The rest is PostLive, which /fragments/posts/N/
+// renders too (0044).
 const student = Astro.locals.student;
 const id = /^[0-9]+$/.test(Astro.params.id ?? "") ? Number(Astro.params.id) : null;
 const post = id === null ? null : getPost(id);
 if (!post) Astro.response.status = 404;
-
-const isPoster = post !== null && post.studentId === student?.id;
-const pageUrl = post ? `/posts/${post.id}/` : "/";
-const pendingOffers = post && isPoster ? pendingOffersOn(post.id) : [];
-const swap = post?.status === "swapped" ? acceptedSwapOn(post.id) : null;
-const ownOffer = post && student && !isPoster ? ownOfferOn(student.id, post.id) : null;
-const canOffer =
-  post !== null &&
-  post.status === "open" &&
-  student !== null &&
-  !isPoster &&
-  ownOffer?.status !== "pending" &&
-  !declinedOfferOn(student.id, post.id);
 ---
 
 <Layout title={post ? `Swap post by ${post.username}` : "Swap post not found"} student={student}>
@@ -38,104 +19,9 @@ const canOffer =
     post ? (
       <>
         <h1>Swap post by {post.username}</h1>
-        {
-          post.status === "withdrawn" && post.withdrawnAt && (
-            <p class="withdrawn">
-              This swap post was withdrawn
-              {withdrawnBySwap(post) && " automatically"} on{" "}
-              <time datetime={post.withdrawnAt.toISOString()}>{formatCanberra(post.withdrawnAt)}</time>
-              {withdrawnBySwap(post) && " because its poster swapped with someone else"}
-            </p>
-          )
-        }
-        {
-          swap && (
-            <p class="swapped">
-              {swappedSentence({
-                poster: post.username,
-                offered: classLabel(swap.offered),
-                offerer: swap.offerer,
-                leaving: classLabel(post.leaving),
-              })}
-            </p>
-          )
-        }
-        <dl>
-          <dt>Poster</dt>
-          <dd>{post.username}</dd>
-          <dt>Leaving</dt>
-          <dd>{classLabel(post.leaving)}</dd>
-          <dt>Would join</dt>
-          <dd>{post.joins.map((c) => classLabel(c)).join(", ")}</dd>
-          <dt>Message</dt>
-          <dd class="message">{post.message ?? "No message"}</dd>
-          <dt>Posted</dt>
-          <dd>
-            <time datetime={post.postedAt.toISOString()}>{formatCanberra(post.postedAt)}</time>
-          </dd>
-          {
-            post.editedAt && (
-              <>
-                <dt>Edited</dt>
-                <dd class="edited">
-                  <time datetime={post.editedAt.toISOString()}>{formatCanberra(post.editedAt)}</time>
-                </dd>
-              </>
-            )
-          }
-        </dl>
-        {post.status === "open" && <p class="offer-count">{countLabel(post.pendingOffers)}</p>}
-        {
-          pendingOffers.length > 0 && (
-            <section aria-labelledby="offers">
-              <h2 id="offers">Offers</h2>
-              <ul class="offers">
-                {pendingOffers.map((offer) => (
-                  <li>
-                    <span class="offer-text">
-                      <strong>{offer.offerer}</strong> would leave <span class="class">{classLabel(offer.offered)}</span>
-                    </span>
-                    <div class="controls">
-                      <a class="button" href={`/offers/${offer.id}/accept/`}>
-                        Accept
-                      </a>
-                      <form method="post" action={`/offers/${offer.id}/decline`}>
-                        <input type="hidden" name="next" value={pageUrl} />
-                        <button>Decline</button>
-                      </form>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )
-        }
-        {
-          ownOffer && (
-            <section aria-labelledby="your-offer">
-              <h2 id="your-offer">Your offer</h2>
-              <OwnOffer offer={ownOffer} next={pageUrl} />
-            </section>
-          )
-        }
-        {
-          canOffer && (
-            <form method="post" action={`/posts/${post.id}/offers`} class="offer-form">
-              <input type="hidden" name="next" value={pageUrl} />
-              <fieldset>
-                <legend>The class you hold and would leave</legend>
-                {post.joins.map((c) => (
-                  <label class="choice">
-                    <input type="radio" name="class" value={c.id} checked={post.joins.length === 1} required />
-                    {classLabel(c)}
-                  </label>
-                ))}
-              </fieldset>
-              <button>Offer to swap</button>
-            </form>
-          )
-        }
-        {isPoster && post.status === "open" && <PostControls postId={post.id} next={pageUrl} />}
+        <div id="post-live" data-live-url={`/fragments/posts/${post.id}/`} data-post-id={post.id}>
+          <PostLive post={post} student={student} />
+        </div>
         <p>
           <a href="/">Back to the board</a>
         </p>
@@ -150,3 +36,18 @@ const canOffer =
     )
   }
 </Layout>
+
+<script>
+  import { parseLiveEvent, postRefetchOn } from "../../lib/live";
+  import { startLive } from "../../scripts/live";
+
+  const container = document.getElementById("post-live");
+  if (container) {
+    const postId = Number(container.dataset.postId);
+    startLive({
+      container,
+      url: container.dataset.liveUrl ?? "",
+      wants: (data) => postRefetchOn(parseLiveEvent(data), postId),
+    });
+  }
+</script>

@@ -1,0 +1,13 @@
+---
+import BoardContent from "../../components/BoardContent.astro";
+
+// The board's content alone, for the live refresh (0042): the same
+// server-rendered HTML `/` puts inside #board-live. src/middleware.ts answers
+// a logged-out request with a 401 (0013), never the login page, so a refetch
+// can't swap a login form into the board.
+const student = Astro.locals.student;
+if (!student) return new Response(null, { status: 401 });
+Astro.response.headers.set("cache-control", "no-store");
+---
+
+<BoardContent student={student} />

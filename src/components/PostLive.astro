@@ -1,0 +1,133 @@
+---
+import OwnOffer from "./OwnOffer.astro";
+import PostControls from "./PostControls.astro";
+import { classLabel } from "../lib/classes";
+import { acceptedSwapOn, declinedOfferOn, ownOfferOn, pendingOffersOn } from "../lib/offer-store";
+import { countLabel, swappedSentence } from "../lib/offers";
+import { withdrawnBySwap, type PostView } from "../lib/posts";
+import type { Student } from "../lib/schema";
+import { formatCanberra } from "../lib/time";
+
+interface Props {
+  post: PostView;
+  student: Student | null;
+}
+
+// The post page's live part (0044): the post, its status, its pending-offer
+// count and what this viewer sees of its offers (0023) — the one render path
+// for /posts/N/ and for the refetch at /fragments/posts/N/. The poster sees
+// each pending offer and who made it, an offerer sees their own offer and its
+// status, anyone else sees only the count. Controls that no longer apply
+// aren't rendered, so they disappear on a refresh.
+const { post, student } = Astro.props;
+const isPoster = post.studentId === student?.id;
+const pageUrl = `/posts/${post.id}/`;
+const pendingOffers = isPoster ? pendingOffersOn(post.id) : [];
+const swap = post.status === "swapped" ? acceptedSwapOn(post.id) : null;
+const ownOffer = student && !isPoster ? ownOfferOn(student.id, post.id) : null;
+const canOffer =
+  post.status === "open" &&
+  student !== null &&
+  !isPoster &&
+  ownOffer?.status !== "pending" &&
+  !declinedOfferOn(student.id, post.id);
+---
+
+{
+  post.status === "withdrawn" && post.withdrawnAt && (
+    <p class="withdrawn">
+      This swap post was withdrawn
+      {withdrawnBySwap(post) && " automatically"} on{" "}
+      <time datetime={post.withdrawnAt.toISOString()}>{formatCanberra(post.withdrawnAt)}</time>
+      {withdrawnBySwap(post) && " because its poster swapped with someone else"}
+    </p>
+  )
+}
+{
+  swap && (
+    <p class="swapped">
+      {swappedSentence({
+        poster: post.username,
+        offered: classLabel(swap.offered),
+        offerer: swap.offerer,
+        leaving: classLabel(post.leaving),
+      })}
+    </p>
+  )
+}
+<dl>
+  <dt>Poster</dt>
+  <dd>{post.username}</dd>
+  <dt>Leaving</dt>
+  <dd>{classLabel(post.leaving)}</dd>
+  <dt>Would join</dt>
+  <dd>{post.joins.map((c) => classLabel(c)).join(", ")}</dd>
+  <dt>Message</dt>
+  <dd class="message">{post.message ?? "No message"}</dd>
+  <dt>Posted</dt>
+  <dd>
+    <time datetime={post.postedAt.toISOString()}>{formatCanberra(post.postedAt)}</time>
+  </dd>
+  {
+    post.editedAt && (
+      <>
+        <dt>Edited</dt>
+        <dd class="edited">
+          <time datetime={post.editedAt.toISOString()}>{formatCanberra(post.editedAt)}</time>
+        </dd>
+      </>
+    )
+  }
+</dl>
+{post.status === "open" && <p class="offer-count">{countLabel(post.pendingOffers)}</p>}
+{
+  pendingOffers.length > 0 && (
+    <section aria-labelledby="offers">
+      <h2 id="offers">Offers</h2>
+      <ul class="offers">
+        {pendingOffers.map((offer) => (
+          <li>
+            <span class="offer-text">
+              <strong>{offer.offerer}</strong> would leave <span class="class">{classLabel(offer.offered)}</span>
+            </span>
+            <div class="controls">
+              <a class="button" href={`/offers/${offer.id}/accept/`}>
+                Accept
+              </a>
+              <form method="post" action={`/offers/${offer.id}/decline`}>
+                <input type="hidden" name="next" value={pageUrl} />
+                <button>Decline</button>
+              </form>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+{
+  ownOffer && (
+    <section aria-labelledby="your-offer">
+      <h2 id="your-offer">Your offer</h2>
+      <OwnOffer offer={ownOffer} next={pageUrl} />
+    </section>
+  )
+}
+{
+  canOffer && (
+    <form method="post" action={`/posts/${post.id}/offers`} class="offer-form">
+      <input type="hidden" name="next" value={pageUrl} />
+      <fieldset>
+        <legend>The class you hold and would leave</legend>
+        {post.joins.map((c) => (
+          <label class="choice">
+            <input type="radio" name="class" value={c.id} checked={post.joins.length === 1} required />
+            {classLabel(c)}
+          </label>
+        ))}
+      </fieldset>
+      <button>Offer to swap</button>
+    </form>
+  )
+}
+{isPoster && post.status === "open" && <PostControls postId={post.id} next={pageUrl} />}

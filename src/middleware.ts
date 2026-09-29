@@ -28,6 +28,11 @@ export const onRequest = defineMiddleware((context, next) => {
     return next();
   }
 
+  // the live refresh's refetch routes answer a logged-out request with a bare
+  // 401, never the login page (0013): a redirect would be followed by fetch()
+  // and the login form swapped into the board
+  if (path.startsWith("/fragments/")) return new Response(null, { status: 401 });
+
   const target = safeNextPath(path + context.url.search);
   return context.redirect(`/login/?next=${encodeURIComponent(target)}`);
 });
