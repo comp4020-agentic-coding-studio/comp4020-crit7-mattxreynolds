@@ -25,7 +25,7 @@ const { offer, next, link = false } = Astro.props;
     offer.status === "pending" && (
       <form method="post" action={`/offers/${offer.id}/withdraw`}>
         <input type="hidden" name="next" value={next} />
-        <button>Withdraw</button>
+        <button class="button secondary">Withdraw</button>
       </form>
     )
   }

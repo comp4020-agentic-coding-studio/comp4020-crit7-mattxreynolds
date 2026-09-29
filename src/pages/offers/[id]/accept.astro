@@ -48,10 +48,10 @@ if (!view) {
 
 <Layout title="Accept this offer?" student={student}>
   <h1>Accept this offer?</h1>
-  {error && !blocked && <p role="alert">{error}</p>}
+  {error && !blocked && <p role="alert" data-attention>{error}</p>}
   {
     blocked || !view ? (
-      <p role="alert">
+      <p role="alert" data-attention>
         {blocked}
         {view && view.posterId === student.id && (
           <>
@@ -75,7 +75,7 @@ if (!view) {
         <p>This app can't change your timetable. After accepting, make the change in MyTimetable.</p>
         <form method="post" action={`/offers/${view.id}/accept/`} class="controls">
           <input type="hidden" name="confirm" value="yes" />
-          <button>Accept the swap</button>
+          <button class="button primary">Accept the swap</button>
           <a href={`/posts/${view.postId}/`}>Cancel</a>
         </form>
       </>

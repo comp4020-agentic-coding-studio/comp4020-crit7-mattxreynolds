@@ -1,6 +1,7 @@
 ---
 import "../styles.css";
 import { unreadCount } from "../lib/privateMessages";
+import { UNOFFICIAL_FOOTER } from "../lib/notice";
 import type { Student } from "../lib/schema";
 
 interface Props {
@@ -21,20 +22,32 @@ const unread = student ? unreadCount(student.id) : 0;
     <title>{title}</title>
   </head>
   <body>
-    <nav aria-label="site">
-      {student && <a href="/">Board</a>}
-      {student && <a href="/messages/">{unread > 0 ? `Messages (${unread})` : "Messages"}</a>}
-      <a href="/readme/">About</a>
-      {
-        student && (
-          <form method="post" action="/logout">
-            <button>Log out</button>
-          </form>
-        )
-      }
-    </nav>
+    <header class="site-header">
+      <span class="wordmark">Swap Board</span>
+      <nav aria-label="site">
+        {student && <a href="/">Board</a>}
+        {
+          student && (
+            <a href="/messages/" data-attention={unread > 0 ? "" : undefined}>
+              {unread > 0 ? `Messages (${unread})` : "Messages"}
+            </a>
+          )
+        }
+        <a href="/readme/">About</a>
+        {
+          student && (
+            <form method="post" action="/logout">
+              <button class="button secondary">Log out</button>
+            </form>
+          )
+        }
+      </nav>
+    </header>
     <main>
       <slot />
     </main>
+    <footer class="site-footer">
+      <p>{UNOFFICIAL_FOOTER}</p>
+    </footer>
   </body>
 </html>

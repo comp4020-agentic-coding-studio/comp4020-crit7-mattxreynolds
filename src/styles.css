@@ -1,29 +1,131 @@
+/* The transit-board shell (0050, 0058): a navy header and footer, cyan for the
+   primary action, coral only where something waits on the viewer. Coral is
+   the `data-attention` attribute: nothing else uses it. */
+:root {
+  --navy: #0b2545;
+  --navy-soft: #16345e;
+  --cyan: #22c7e8;
+  --link: #0a6480;
+  --coral: #ff7a63;
+  --coral-wash: #fff0ec;
+  --paper: #f2f6fa;
+  --card: #ffffff;
+  --ink: #12213a;
+  --muted: #4a5b73;
+  --line: #c3d0de;
+  --wash: #e6edf5;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   margin: 0;
-  padding: 2rem;
-  font-family: system-ui, sans-serif;
+  background: var(--paper);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   line-height: 1.6;
-  color: #1a1a1a;
+  color: var(--ink);
+}
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--navy);
+  border-bottom: 4px solid var(--cyan);
+  color: #fff;
+}
+
+.wordmark {
+  padding-inline-start: 0.6rem;
+  border-inline-start: 0.4rem solid var(--cyan);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
 }
 
 main {
-  max-width: 40rem;
+  flex: 1;
+  width: 100%;
+  max-width: 64rem;
   margin: 0 auto;
+  padding: 1.5rem 1rem 2rem;
+}
+
+h1 {
+  margin-block: 0 1rem;
+  font-size: 1.9rem;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+}
+
+h2 {
+  margin-block: 1.5rem 0.5rem;
+  font-size: 1.15rem;
+  letter-spacing: 0.06em;
 }
 
 a {
-  color: #0b5fff;
+  color: var(--link);
 }
 
 nav {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
+  gap: 0.25rem 1.25rem;
+}
+
+.site-header nav {
+  margin-inline-start: auto;
+}
+
+.site-header nav a {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Messages (N) with N at least 1: the label stays, a coral pill goes round it */
+nav a[data-attention] {
+  padding: 0.05rem 0.7rem;
+  border-radius: 999px;
+  background: var(--coral);
+  color: var(--navy);
+  text-decoration: none;
 }
 
 nav form {
   margin: 0;
+}
+
+nav button.button {
+  min-height: 0;
+  padding: 0.15rem 0.8rem;
+  border-color: #fff;
+  background: transparent;
+  color: #fff;
+}
+
+.site-footer {
+  padding: 1rem;
+  background: var(--navy);
+  border-top: 4px solid var(--cyan);
+  color: #d3deec;
+  font-size: 0.9rem;
+}
+
+.site-footer p {
+  max-width: 64rem;
+  margin: 0 auto;
 }
 
 form {
@@ -36,10 +138,14 @@ form {
 
 form label {
   width: 100%;
+  font-weight: 600;
 }
 
+/* a form error waits on the viewer: the attention style (0058) */
 [role="alert"] {
-  color: #b00020;
+  padding: 0.5rem 0.75rem;
+  border-inline-start: 4px solid var(--coral);
+  background: var(--coral-wash);
   font-weight: 600;
 }
 
@@ -47,12 +153,44 @@ input {
   flex: 1;
   min-width: 12rem;
   padding: 0.4rem 0.6rem;
+  border: 1px solid var(--muted);
+  border-radius: 0.25rem;
+  background: #fff;
+  color: inherit;
   font: inherit;
 }
 
-button {
-  padding: 0.4rem 1rem;
+/* Buttons: cyan is the primary action, the outline the secondary one (0058).
+   A bare <button> looks secondary. */
+button,
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.3rem 1rem;
+  border: 2px solid var(--navy);
+  border-radius: 0.25rem;
+  background: #fff;
+  color: var(--navy);
   font: inherit;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button.primary {
+  border-color: var(--cyan);
+  background: var(--cyan);
+}
+
+.button.primary:hover {
+  background: #57d9f2;
+}
+
+.button.secondary:hover {
+  background: var(--wash);
 }
 
 #messages {
@@ -72,25 +210,17 @@ button {
   margin: 0;
 }
 
-.button {
-  display: inline-block;
-  padding: 0.4rem 1rem;
-  border: 1px solid #0b5fff;
-  border-radius: 0.25rem;
-  text-decoration: none;
-}
-
 [role="status"] {
   padding: 0.5rem 0.75rem;
-  border-left: 4px solid #0b7a3b;
-  background: #eaf6ee;
+  border-left: 4px solid var(--navy);
+  background: var(--wash);
   font-weight: 600;
 }
 
 fieldset {
   flex: 1 1 100%;
   margin: 0;
-  border: 1px solid #c8c8c8;
+  border: 1px solid var(--line);
   border-radius: 0.25rem;
 }
 
@@ -114,14 +244,19 @@ label.choice[hidden] {
 textarea {
   flex: 1 1 100%;
   padding: 0.4rem 0.6rem;
+  border: 1px solid var(--muted);
+  border-radius: 0.25rem;
+  background: #fff;
+  color: inherit;
   font: inherit;
 }
 
 .post {
   margin-block: 1rem;
   padding: 0.5rem 1rem;
-  border: 1px solid #c8c8c8;
+  border: 1px solid var(--line);
   border-radius: 0.25rem;
+  background: var(--card);
 }
 
 .post h3 {
@@ -142,7 +277,7 @@ textarea {
 }
 
 .meta {
-  color: #555;
+  color: var(--muted);
 }
 
 .demo-students li {
@@ -153,7 +288,7 @@ textarea {
 }
 
 .demo-line {
-  color: #555;
+  color: var(--muted);
 }
 
 .meta a {
@@ -174,15 +309,15 @@ textarea {
 
 .withdrawn {
   padding: 0.5rem 0.75rem;
-  border-left: 4px solid #8a5a00;
-  background: #fbf3e2;
+  border-left: 4px solid var(--navy);
+  background: var(--wash);
   font-weight: 600;
 }
 
 .swapped {
   padding: 0.5rem 0.75rem;
-  border-left: 4px solid #1f6f3f;
-  background: #e8f4ec;
+  border-left: 4px solid var(--navy);
+  background: var(--wash);
   font-weight: 600;
 }
 
@@ -203,8 +338,8 @@ textarea {
 
 .final {
   padding: 0.5rem 0.75rem;
-  border-left: 4px solid #8a5a00;
-  background: #fbf3e2;
+  border-left: 4px solid var(--navy);
+  background: var(--wash);
 }
 
 .offer-count {
@@ -224,8 +359,9 @@ textarea {
 .your-offers li {
   margin-block: 0.5rem;
   padding: 0.5rem 1rem;
-  border: 1px solid #c8c8c8;
+  border: 1px solid var(--line);
   border-radius: 0.25rem;
+  background: var(--card);
 }
 
 .own-offer {
@@ -276,8 +412,9 @@ textarea {
 .comment {
   margin-block: 0.5rem;
   padding: 0.5rem 1rem;
-  border: 1px solid #c8c8c8;
+  border: 1px solid var(--line);
   border-radius: 0.25rem;
+  background: var(--card);
 }
 
 .comment p {
@@ -289,7 +426,7 @@ textarea {
 }
 
 .comment.deleted {
-  color: #555;
+  color: var(--muted);
   font-style: italic;
 }
 
@@ -301,7 +438,7 @@ textarea {
 .poster-tag {
   margin-inline: 0.25rem;
   padding: 0.05rem 0.4rem;
-  border: 1px solid #555;
+  border: 1px solid var(--muted);
   border-radius: 0.25rem;
   font-size: 0.85em;
 }
@@ -326,12 +463,13 @@ textarea {
 .private-message {
   margin-block: 0.5rem;
   padding: 0.5rem 1rem;
-  border: 1px solid #c8c8c8;
+  border: 1px solid var(--line);
   border-radius: 0.25rem;
+  background: var(--card);
 }
 
 .private-message.mine {
-  background: #f2f5fa;
+  background: var(--wash);
 }
 
 .private-message p {
@@ -354,8 +492,9 @@ textarea {
 
 .conversation {
   margin-block: 0.5rem;
-  border: 1px solid #c8c8c8;
+  border: 1px solid var(--line);
   border-radius: 0.25rem;
+  background: var(--card);
 }
 
 .conversation a {
@@ -367,11 +506,11 @@ textarea {
 
 .conversation a:hover,
 .conversation a:focus-visible {
-  background: #f2f5fa;
+  background: var(--wash);
 }
 
 .conversation time {
-  color: #555;
+  color: var(--muted);
 }
 
 .conversation-preview {
@@ -382,5 +521,5 @@ textarea {
 
 .conversation.unread {
   font-weight: 700;
-  border-color: #0b5fff;
+  border-color: var(--navy);
 }

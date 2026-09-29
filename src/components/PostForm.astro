@@ -42,7 +42,7 @@ const { action, classes, leaving, joins, message, submitLabel } = Astro.props;
   </fieldset>
   <label for="message">Message (optional, up to {MESSAGE_MAX} characters)</label>
   <textarea id="message" name="message" rows="4" maxlength={MESSAGE_MAX}>{message}</textarea>
-  <button>{submitLabel}</button>
+  <button class="button primary">{submitLabel}</button>
 </form>
 
 <script>

@@ -16,7 +16,7 @@ const username = Astro.url.searchParams.get("username") ?? "";
 <Layout title="Sign up" student={null}>
   <h1>Sign up</h1>
   <p>{DEMO_LOGIN_NOTICE}</p>
-  {error && <p role="alert">{error}</p>}
+  {error && <p role="alert" data-attention>{error}</p>}
   <form method="post" action="/api/signup">
     <input type="hidden" name="next" value={next} />
     <label for="username">Username</label>
@@ -39,7 +39,7 @@ const username = Astro.url.searchParams.get("username") ?? "";
       minlength="8"
       autocomplete="new-password"
     />
-    <button>Sign up</button>
+    <button class="button primary">Sign up</button>
   </form>
   <p><a href={`/login/?next=${encodeURIComponent(next)}`}>Log in instead</a></p>
 </Layout>

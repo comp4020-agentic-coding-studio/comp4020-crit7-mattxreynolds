@@ -53,10 +53,10 @@ if (!post) {
 
 <Layout title="Edit your swap post" student={student}>
   <h1>Edit your swap post</h1>
-  {error && !blocked && <p role="alert">{error}</p>}
+  {error && !blocked && <p role="alert" data-attention>{error}</p>}
   {
     blocked ? (
-      <p role="alert">
+      <p role="alert" data-attention>
         {blocked}
         {post && post.studentId === student.id && (
           <>
