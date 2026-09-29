@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { screenshotPath } from "./evidence";
+import { boxes } from "./geometry";
 
 // Issue #18: post a swap from the board, land back on it with the notice,
 // reload and still see it — at both viewports, for the handoff screenshots.
@@ -136,20 +137,17 @@ test("the board is a split on a wide screen and stacks on a phone", async ({ pag
   await page.getByRole("button", { name: "Offer to swap" }).click();
   await page.goto("/");
 
-  // a live refetch can swap the board's nodes between two measurements: read
-  // every box in one go and try again if a node was replaced under us
+  // a live refetch can swap the board's nodes at any moment: boxes() reads them
+  // all in one go, and toPass waits out the page settling
   await expect(async () => {
-    const box = async (selector: string) => {
-      const b = await page.locator(selector).first().boundingBox();
-      if (!b) throw new Error(`${selector} has no box`);
-      return b;
-    };
-    const yourPost = await box("#your-post");
-    const yourPostEntry = await box("#your-post ~ .post");
-    const yourOffers = await box("#your-offers");
-    const openPosts = await box("#open-posts");
-    const side = await box(".board-split > .side-column");
-    const main = await box(".board-split > .main-column");
+    const { yourPost, yourPostEntry, yourOffers, openPosts, side, main } = await boxes(page, {
+      yourPost: "#your-post",
+      yourPostEntry: "#your-post ~ .post",
+      yourOffers: "#your-offers",
+      openPosts: "#open-posts",
+      side: ".board-split > .side-column",
+      main: ".board-split > .main-column",
+    });
 
     if (testInfo.project.name === "desktop") {
       // beside: the side column ends before the main column starts, and both start at the top
@@ -174,8 +172,8 @@ test("the board is a split on a wide screen and stacks on a phone", async ({ pag
   const row = page.locator("#open-posts ~ .post").filter({ hasText: owner }).locator(".exchange");
   await expect(row.locator(".giving")).toContainText("Mon 14:00–15:30");
   await expect(row.locator(".looking-for")).toContainText("Wed 09:00–10:30, Wed 10:30–12:00");
-  const [g, l] = [await row.locator(".giving").boundingBox(), await row.locator(".looking-for").boundingBox()];
-  expect(g && l && (g.x < l.x || g.y < l.y)).toBeTruthy();
+  const { g, l } = await boxes(page, { g: ".exchange .giving", l: ".exchange .looking-for" }, { selector: "#open-posts ~ .post", hasText: owner });
+  expect(g.x < l.x || g.y < l.y).toBe(true);
 
   await page.screenshot({ path: screenshotPath(testInfo, "board-split"), fullPage: true });
 });
