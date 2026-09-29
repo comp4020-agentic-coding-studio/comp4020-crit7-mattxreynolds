@@ -1,4 +1,4 @@
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { CLASSES, type ClassId } from "./classes";
 import { hashPassword } from "./password";
@@ -112,6 +112,8 @@ const DEMO_SWAP: {
   commentedHoursAgo: 64,
 };
 
+type Tx = Parameters<Parameters<BetterSQLite3Database["transaction"]>[0]>[0];
+
 // Written only when no demo student exists (0040): a fresh volume or a fresh
 // test database. A boot never tops up a partly present seed, or a restart
 // would undo what was done as a demo student; only the operator's reset
@@ -124,108 +126,167 @@ export function seedDemoStudents(db: BetterSQLite3Database): void {
     .get();
   if (existing) return;
 
-  const now = Date.now();
+  db.transaction((tx) => writeDemoSeed(tx));
+}
+
+// The operator's reset (0041, 0049), in one transaction so a failure part-way
+// leaves the database as it was (0024's shape). It deletes everything that
+// involves a demo student, then writes the seed again (0038). Students are
+// not in the list: every account stays, and a demo student who is missing is
+// written back. Real-only rows are never matched.
+export function resetDemo(db: BetterSQLite3Database): void {
   db.transaction((tx) => {
-    const ids = new Map<string, number>();
-    for (const username of DEMO_USERNAMES) {
-      // a clash with an existing student (usernames are unique ignoring case)
-      // leaves that student alone rather than stopping the server booting
-      const row = tx
-        .insert(students)
-        .values({ username, passwordHash: hashPassword(DEMO_PASSWORD) })
-        .onConflictDoNothing()
-        .returning({ id: students.id })
-        .get();
-      if (row) ids.set(username, row.id);
-    }
+    const demoIds = tx
+      .select({ id: students.id })
+      .from(students)
+      .where(inArray(students.username, [...DEMO_USERNAMES]))
+      .all()
+      .map((row) => row.id);
 
-    const postIds = new Map<string, number>();
-    for (const post of DEMO_POSTS) {
-      const studentId = ids.get(post.username);
-      if (studentId === undefined) continue;
-      const { id } = tx
-        .insert(swapPosts)
-        .values({
-          studentId,
-          leavingClassId: post.leaving,
-          message: post.message ?? null,
-          postedAt: new Date(now - post.hoursAgo * HOUR),
-        })
-        .returning({ id: swapPosts.id })
-        .get();
-      tx.insert(swapPostJoinClasses)
-        .values(post.joins.map((classId) => ({ postId: id, classId })))
+    if (demoIds.length > 0) {
+      // a real student's post is swapped through a demo student's accepted
+      // offer: it names both students, so it goes with that offer (0024)
+      const swappedWithDemo = tx
+        .select({ postId: offers.postId })
+        .from(offers)
+        .where(and(eq(offers.status, "accepted"), inArray(offers.offererId, demoIds)))
+        .all()
+        .map((row) => row.postId);
+      const postIds = tx
+        .select({ id: swapPosts.id })
+        .from(swapPosts)
+        .where(
+          or(
+            inArray(swapPosts.studentId, demoIds),
+            swappedWithDemo.length > 0 ? inArray(swapPosts.id, swappedWithDemo) : undefined,
+          ),
+        )
+        .all()
+        .map((row) => row.id);
+
+      // children first, so no delete leans on a foreign key cascade
+      tx.delete(comments)
+        .where(or(inArray(comments.authorId, demoIds), postIds.length > 0 ? inArray(comments.postId, postIds) : undefined))
         .run();
-      postIds.set(post.username, id);
-    }
-
-    for (const offer of DEMO_OFFERS) {
-      const offererId = ids.get(offer.offerer);
-      const postId = postIds.get(offer.poster);
-      if (offererId === undefined || postId === undefined) continue;
-      tx.insert(offers)
-        .values({ postId, offererId, offeredClassId: offer.offered, createdAt: new Date(now - offer.hoursAgo * HOUR) })
+      tx.delete(offers)
+        .where(or(inArray(offers.offererId, demoIds), postIds.length > 0 ? inArray(offers.postId, postIds) : undefined))
         .run();
-    }
-
-    for (const comment of DEMO_COMMENTS) {
-      const authorId = ids.get(comment.author);
-      const postId = postIds.get(comment.poster);
-      if (authorId === undefined || postId === undefined) continue;
-      tx.insert(comments)
-        .values({ postId, authorId, body: comment.body, createdAt: new Date(now - comment.hoursAgo * HOUR) })
+      if (postIds.length > 0) {
+        tx.delete(swapPostJoinClasses).where(inArray(swapPostJoinClasses.postId, postIds)).run();
+        tx.delete(swapPosts).where(inArray(swapPosts.id, postIds)).run();
+      }
+      tx.delete(privateMessages)
+        .where(or(inArray(privateMessages.senderId, demoIds), inArray(privateMessages.recipientId, demoIds)))
         .run();
     }
 
-    for (const message of DEMO_PRIVATE_MESSAGES) {
-      const senderId = ids.get(message.sender);
-      const recipientId = ids.get(message.recipient);
-      if (senderId === undefined || recipientId === undefined) continue;
-      const sentAt = now - message.hoursAgo * HOUR;
-      tx.insert(privateMessages)
-        .values({
-          senderId,
-          recipientId,
-          body: message.body,
-          createdAt: new Date(sentAt),
-          // a read one was opened soon after it was sent
-          readAt: message.read ? new Date(sentAt + HOUR) : null,
-        })
-        .run();
-    }
-
-    const posterId = ids.get(DEMO_SWAP.poster);
-    const offererId = ids.get(DEMO_SWAP.offerer);
-    if (posterId !== undefined && offererId !== undefined) {
-      const { id } = tx
-        .insert(swapPosts)
-        .values({
-          studentId: posterId,
-          leavingClassId: DEMO_SWAP.leaving,
-          status: "swapped",
-          postedAt: new Date(now - DEMO_SWAP.postedHoursAgo * HOUR),
-        })
-        .returning({ id: swapPosts.id })
-        .get();
-      tx.insert(swapPostJoinClasses).values({ postId: id, classId: DEMO_SWAP.join }).run();
-      tx.insert(comments)
-        .values({
-          postId: id,
-          authorId: offererId,
-          body: DEMO_SWAP.commentBody,
-          createdAt: new Date(now - DEMO_SWAP.commentedHoursAgo * HOUR),
-        })
-        .run();
-      tx.insert(offers)
-        .values({
-          postId: id,
-          offererId,
-          offeredClassId: DEMO_SWAP.join,
-          status: "accepted",
-          createdAt: new Date(now - DEMO_SWAP.offeredHoursAgo * HOUR),
-          resolvedAt: new Date(now - DEMO_SWAP.swappedHoursAgo * HOUR),
-        })
-        .run();
-    }
+    writeDemoSeed(tx);
   });
+}
+
+function writeDemoSeed(tx: Tx): void {
+  const now = Date.now();
+  const ids = new Map<string, number>();
+  for (const username of DEMO_USERNAMES) {
+    // a clash with an existing student (usernames are unique ignoring case)
+    // leaves that student alone rather than stopping the server booting; a
+    // demo student who already exists, as on a reset, keeps their account
+    const row = tx
+      .insert(students)
+      .values({ username, passwordHash: hashPassword(DEMO_PASSWORD) })
+      .onConflictDoNothing()
+      .returning({ id: students.id })
+      .get();
+    const id = row?.id ?? tx.select({ id: students.id }).from(students).where(eq(students.username, username)).get()?.id;
+    if (id !== undefined) ids.set(username, id);
+  }
+
+  const postIds = new Map<string, number>();
+  for (const post of DEMO_POSTS) {
+    const studentId = ids.get(post.username);
+    if (studentId === undefined) continue;
+    const { id } = tx
+      .insert(swapPosts)
+      .values({
+        studentId,
+        leavingClassId: post.leaving,
+        message: post.message ?? null,
+        postedAt: new Date(now - post.hoursAgo * HOUR),
+      })
+      .returning({ id: swapPosts.id })
+      .get();
+    tx.insert(swapPostJoinClasses)
+      .values(post.joins.map((classId) => ({ postId: id, classId })))
+      .run();
+    postIds.set(post.username, id);
+  }
+
+  for (const offer of DEMO_OFFERS) {
+    const offererId = ids.get(offer.offerer);
+    const postId = postIds.get(offer.poster);
+    if (offererId === undefined || postId === undefined) continue;
+    tx.insert(offers)
+      .values({ postId, offererId, offeredClassId: offer.offered, createdAt: new Date(now - offer.hoursAgo * HOUR) })
+      .run();
+  }
+
+  for (const comment of DEMO_COMMENTS) {
+    const authorId = ids.get(comment.author);
+    const postId = postIds.get(comment.poster);
+    if (authorId === undefined || postId === undefined) continue;
+    tx.insert(comments)
+      .values({ postId, authorId, body: comment.body, createdAt: new Date(now - comment.hoursAgo * HOUR) })
+      .run();
+  }
+
+  for (const message of DEMO_PRIVATE_MESSAGES) {
+    const senderId = ids.get(message.sender);
+    const recipientId = ids.get(message.recipient);
+    if (senderId === undefined || recipientId === undefined) continue;
+    const sentAt = now - message.hoursAgo * HOUR;
+    tx.insert(privateMessages)
+      .values({
+        senderId,
+        recipientId,
+        body: message.body,
+        createdAt: new Date(sentAt),
+        // a read one was opened soon after it was sent
+        readAt: message.read ? new Date(sentAt + HOUR) : null,
+      })
+      .run();
+  }
+
+  const posterId = ids.get(DEMO_SWAP.poster);
+  const offererId = ids.get(DEMO_SWAP.offerer);
+  if (posterId !== undefined && offererId !== undefined) {
+    const { id } = tx
+      .insert(swapPosts)
+      .values({
+        studentId: posterId,
+        leavingClassId: DEMO_SWAP.leaving,
+        status: "swapped",
+        postedAt: new Date(now - DEMO_SWAP.postedHoursAgo * HOUR),
+      })
+      .returning({ id: swapPosts.id })
+      .get();
+    tx.insert(swapPostJoinClasses).values({ postId: id, classId: DEMO_SWAP.join }).run();
+    tx.insert(comments)
+      .values({
+        postId: id,
+        authorId: offererId,
+        body: DEMO_SWAP.commentBody,
+        createdAt: new Date(now - DEMO_SWAP.commentedHoursAgo * HOUR),
+      })
+      .run();
+    tx.insert(offers)
+      .values({
+        postId: id,
+        offererId,
+        offeredClassId: DEMO_SWAP.join,
+        status: "accepted",
+        createdAt: new Date(now - DEMO_SWAP.offeredHoursAgo * HOUR),
+        resolvedAt: new Date(now - DEMO_SWAP.swappedHoursAgo * HOUR),
+      })
+      .run();
+  }
 }

@@ -94,7 +94,7 @@ Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
 - **Demo seed**: the demo students and the posts, offers, comments and private
   messages written for them (`0038`). It is written only when no demo student
   exists, never on every boot (`0040`).
-- **Seed reset**: `pnpm seed:reset`, run only by the operator. It deletes
+- **Seed reset**: `pnpm seed:reset` (on Fly `node dist/seed-reset.mjs`, `0049`), run only by the operator. It deletes
   everything involving a demo student (including a real student's post swapped
   with one) and writes the demo seed again. Fixed by #12 (`0040`, `0041`).
 

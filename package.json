@@ -5,15 +5,17 @@
   "scripts": {
     "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && pnpm build:seed-reset",
+    "build:seed-reset": "esbuild src/seed-reset.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/seed-reset.mjs --log-level=warning",
     "preview": "astro preview",
     "typecheck": "astro check",
     "check": "pnpm typecheck && pnpm test",
     "check:evidence": "node scripts/check-evidence.ts",
     "cite": "node scripts/cite.ts",
     "probe": "scripts/probe.sh",
-    "test": "astro build && vitest run",
-    "e2e": "astro build && playwright test",
+    "seed:reset": "pnpm build:seed-reset && node dist/seed-reset.mjs",
+    "test": "pnpm build && vitest run",
+    "e2e": "pnpm build && playwright test",
     "db:generate": "drizzle-kit generate",
     "db:check": "scripts/db-check.sh"
   },
@@ -31,6 +33,7 @@
     "@types/jsdom": "^28.0.3",
     "axe-core": "^4.13.0",
     "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.28.1",
     "jsdom": "^29.1.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"

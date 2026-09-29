@@ -46,6 +46,14 @@ ordinary form. Their names are taken: signing up as one fails like any other
 duplicate. The demo students are written once, when the database has none;
 a server restart never rewrites them.
 
+**Resetting the demo is the operator's job, and the app has no button for
+it.** `pnpm seed:reset` locally, or `fly ssh console -C "node dist/seed-reset.mjs"`
+on Fly, deletes every swap post, offer, comment and private message that
+involves a demo student, including a real student's post swapped through a
+demo student's accepted offer, then writes the demo seed again, all in one
+transaction. Real students keep their accounts and everything that involves
+only real students.
+
 **Real names and uni IDs are allowed**, since the demo-login notice above
 already tells a student who can read what they post.
 
