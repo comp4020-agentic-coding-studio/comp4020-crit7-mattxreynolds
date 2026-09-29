@@ -18,13 +18,13 @@ const baseUrl = inject("baseUrl");
 async function ownedPosts(): Promise<{ open: number; withdrawn: number; openOwner: string; withdrawnOwner: string }> {
   const fields = { leaving: CLASSES[0].id, join: [CLASSES[2].id], message: "Route coverage." };
   const openOwner = await newStudent("invopen");
-  await submitPost(openOwner, fields);
+  expect((await submitPost(openOwner, fields)).status).toBe(303);
   const withdrawnOwner = await newStudent("invgone");
-  await submitPost(withdrawnOwner, fields);
+  expect((await submitPost(withdrawnOwner, fields)).status).toBe(303);
   const withdrawn = await ownPostId(withdrawnOwner);
   const open = await ownPostId(openOwner);
   if (open === null || withdrawn === null) throw new Error("could not set up the posts");
-  await withdrawPost(withdrawnOwner, withdrawn, "/");
+  expect((await withdrawPost(withdrawnOwner, withdrawn, "/")).status).toBe(303);
   return { open, withdrawn, openOwner, withdrawnOwner };
 }
 
@@ -72,6 +72,13 @@ for (const [route, ownerCookie] of LOGGED_IN_ROUTES) describe(`invariants: ${rou
   it("responds 200", () => {
     expect(status).toBe(200);
   });
+
+  // the withdrawn page must really be the withdrawn page, not an open post
+  if (route === `/posts/${owned.withdrawn}/`) {
+    it("says the post was withdrawn", () => {
+      expect(doc.body.textContent).toContain("This swap post was withdrawn");
+    });
+  }
 
   it("declares its language", () => {
     expect(doc.documentElement.getAttribute("lang")).toBeTruthy();
