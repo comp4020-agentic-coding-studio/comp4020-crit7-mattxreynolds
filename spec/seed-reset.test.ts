@@ -248,7 +248,7 @@ describe("resetDemo", () => {
     expect(all<{ id: number }>(raw, "select id from students order by id").slice(0, idsBefore.length)).toEqual(idsBefore);
     expect(demoState(raw)).toEqual(freshState);
     expect(all<{ username: string }>(raw, "select username from students order by username").map((r) => r.username)).toEqual(
-      [...DEMO_USERNAMES].sort(),
+      ["Alex", "Jordan", "Lena", "Mei", "Noah", "Priya", "Sam", "Zara"],
     );
   });
 

@@ -394,28 +394,31 @@ export interface DemoOfferCounts {
 // The offer parts of each demo student's login line (0039): pending offers on
 // their open post, and pending offers they have made. Counts only.
 export function demoOfferCounts(usernames: readonly string[]): Map<string, DemoOfferCounts> {
+  // matched ignoring case (0059): a volume seeded before it holds lowercase names
+  const lower = usernames.map((u) => u.toLowerCase());
+  const nameOf = new Map(usernames.map((u) => [u.toLowerCase(), u]));
   const result = new Map<string, DemoOfferCounts>(usernames.map((u) => [u, { toAnswer: 0, made: 0 }]));
   const made = db
-    .select({ username: students.username, n: sql<number>`count(*)` })
+    .select({ username: sql<string>`lower(${students.username})`, n: sql<number>`count(*)` })
     .from(offers)
     .innerJoin(students, eq(offers.offererId, students.id))
-    .where(and(eq(offers.status, "pending"), inArray(students.username, [...usernames])))
-    .groupBy(students.username)
+    .where(and(eq(offers.status, "pending"), inArray(sql`lower(${students.username})`, lower)))
+    .groupBy(sql`lower(${students.username})`)
     .all();
   for (const row of made) {
-    const counts = result.get(row.username);
+    const counts = result.get(nameOf.get(row.username) ?? "");
     if (counts) counts.made = row.n;
   }
   const toAnswer = db
-    .select({ username: students.username, n: sql<number>`count(*)` })
+    .select({ username: sql<string>`lower(${students.username})`, n: sql<number>`count(*)` })
     .from(offers)
     .innerJoin(swapPosts, eq(offers.postId, swapPosts.id))
     .innerJoin(students, eq(swapPosts.studentId, students.id))
-    .where(and(eq(offers.status, "pending"), eq(swapPosts.status, "open"), inArray(students.username, [...usernames])))
-    .groupBy(students.username)
+    .where(and(eq(offers.status, "pending"), eq(swapPosts.status, "open"), inArray(sql`lower(${students.username})`, lower)))
+    .groupBy(sql`lower(${students.username})`)
     .all();
   for (const row of toAnswer) {
-    const counts = result.get(row.username);
+    const counts = result.get(nameOf.get(row.username) ?? "");
     if (counts) counts.toAnswer = row.n;
   }
   return result;

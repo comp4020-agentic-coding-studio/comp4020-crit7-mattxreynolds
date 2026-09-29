@@ -202,13 +202,16 @@ export function inboxFor(viewerId: number): InboxRow[] {
  *  unread part of a demo line (0039). Counts only. */
 export function demoUnreadCounts(usernames: readonly string[]): Map<string, number> {
   const rows = db
-    .select({ username: students.username, n: sql<number>`count(*)` })
+    .select({ username: sql<string>`lower(${students.username})`, n: sql<number>`count(*)` })
     .from(privateMessages)
     .innerJoin(students, eq(privateMessages.recipientId, students.id))
-    .where(and(isNull(privateMessages.readAt), inArray(students.username, [...usernames])))
-    .groupBy(students.username)
+    .where(and(isNull(privateMessages.readAt), inArray(sql`lower(${students.username})`, usernames.map((u) => u.toLowerCase()))))
+    .groupBy(sql`lower(${students.username})`)
     .all();
-  return new Map(rows.map((r) => [r.username, r.n]));
+  return new Map(usernames.flatMap((u) => {
+    const row = rows.find((r) => r.username === u.toLowerCase());
+    return row ? [[u, row.n] as [string, number]] : [];
+  }));
 }
 
 /** The login page's unread part of a demo line: "1 unread message". */

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { commentCounts } from "./comments";
 import { db } from "./db";
 import { publishPostChanged } from "./events";
@@ -300,12 +300,12 @@ export function getPost(id: number): PostView | null {
 // students has an open post. A set of names, no post content.
 export function usernamesWithOpenPost(usernames: readonly string[]): Set<string> {
   const rows = db
-    .select({ username: students.username })
+    .select({ username: sql<string>`lower(${students.username})` })
     .from(swapPosts)
     .innerJoin(students, eq(swapPosts.studentId, students.id))
-    .where(and(eq(swapPosts.status, "open"), inArray(students.username, [...usernames])))
+    .where(and(eq(swapPosts.status, "open"), inArray(sql`lower(${students.username})`, usernames.map((u) => u.toLowerCase()))))
     .all();
-  return new Set(rows.map((r) => r.username));
+  return new Set(usernames.filter((u) => rows.some((r) => r.username === u.toLowerCase())));
 }
 
 // A message as the board shows it: the first BOARD_MESSAGE_CUT characters,

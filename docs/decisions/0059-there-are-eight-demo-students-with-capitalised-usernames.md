@@ -29,5 +29,8 @@ reset bring the deployed lowercase accounts across without a new set of ids.
 
 - Supersedes 0037, which named seven lowercase students.
 - The login page lists eight demo buttons plus "Random demo student".
-- Until the reset runs on a volume seeded before this, its accounts are still
-  lowercase: the login page's live lines read "no post yet" for them.
+- On a volume seeded before this, the accounts stay lowercase until the
+  operator's reset runs (a boot writes nothing, 0040). The login page's live
+  lines still find them, ignoring case, but `Zara` does not exist yet, so her
+  button does nothing until the reset. Deploying this needs the reset as its
+  next step.

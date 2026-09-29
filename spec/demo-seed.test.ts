@@ -84,6 +84,41 @@ describe("the demo seed", () => {
     }
   }, 30_000);
 
+  it("leaves a volume seeded with lowercase names alone on boot, and still shows their login lines and logs them in", async () => {
+    const dbPath = join(mkdtempSync(join(tmpdir(), "demo-seed-lower-")), "test.db");
+    const first = await spawnServer(dbPath);
+    await first.stop();
+    const counts = (path: string) => {
+      const db = new Database(path, { readonly: true });
+      const row = db
+        .prepare(
+          `select (select count(*) from students) as students, (select count(*) from swap_posts) as posts,
+                  (select count(*) from offers) as offers, (select count(*) from comments) as comments,
+                  (select count(*) from private_messages) as messages`,
+        )
+        .get();
+      db.close();
+      return row;
+    };
+    const db = new Database(dbPath);
+    db.prepare("update students set username = lower(username)").run();
+    db.close();
+    const before = counts(dbPath);
+
+    const second = await spawnServer(dbPath);
+    try {
+      expect(counts(dbPath)).toEqual(before);
+      const res = await postForm(second.baseUrl, "/api/login", { username: "alex", password: DEMO_PASSWORD, next: "/" });
+      expect(res.status).toBe(303);
+      expect(sessionCookieFrom(res)).toBeTruthy();
+      const page = new JSDOM(await (await fetch(new URL("/login/", second.baseUrl))).text()).window.document;
+      const lines = [...page.querySelectorAll(".demo-students li")].map((li) => li.textContent?.replace(/\s+/g, " ").trim());
+      expect(lines.find((l) => l?.startsWith("Alex"))).toContain("2 offers to answer");
+    } finally {
+      await second.stop();
+    }
+  }, 60_000);
+
   it("is not rewritten when demo students already exist: what was changed survives a restart", async () => {
     const dbPath = join(mkdtempSync(join(tmpdir(), "demo-seed-restart-")), "test.db");
     const first = await spawnServer(dbPath);
@@ -121,7 +156,7 @@ describe("a real student holding a demo name", () => {
     const realHash = hashPassword("real-password-1");
     const db = new Database(dbPath);
     db.prepare("delete from students").run();
-    db.prepare("insert into students (username, password_hash) values ('Alex', ?)").run(realHash);
+    db.prepare("insert into students (username, password_hash) values ('ALEX', ?)").run(realHash);
     db.close();
 
     const second = await spawnServer(dbPath);
@@ -134,7 +169,7 @@ describe("a real student holding a demo name", () => {
     const after = new Database(dbPath, { readonly: true });
     const alex = after.prepare("select username, password_hash from students where lower(username) = 'alex'").all();
     after.close();
-    expect(alex).toEqual([{ username: "Alex", password_hash: realHash }]);
+    expect(alex).toEqual([{ username: "ALEX", password_hash: realHash }]);
   }, 60_000);
 
   it("is never logged into by the one-click button without its password", async () => {
