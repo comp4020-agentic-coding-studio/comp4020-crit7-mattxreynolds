@@ -2,7 +2,6 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { formatCanberra } from "../src/lib/time";
 import { baseUrl, demoCookie, newStudent, page, text, usernameOf } from "./helpers";
 import { ROUTES } from "./routes";
 import { spawnServer } from "./spawn-server";
@@ -126,6 +125,16 @@ describe("opening a conversation", () => {
     expect(await headerLink("/", a.cookie)).toBe("Messages (1)");
   });
 
+  it("is not done by the conversation's refetch route", async () => {
+    const a = await student("ibf");
+    const b = await student("ibfb");
+    await sendOk(b.cookie, a.username, "hello");
+    const res = await fetch(new URL(`/fragments/messages/${b.username}/`, baseUrl), { headers: { cookie: a.cookie } });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("hello");
+    expect(await headerLink("/", a.cookie)).toBe("Messages (1)");
+  });
+
   it("is not done by loading the inbox", async () => {
     const a = await student("ibi");
     const b = await student("ibib");
@@ -166,10 +175,17 @@ describe("the inbox", () => {
 
     // the preview is the last private message, whoever sent it
     expect(rows.map((r) => r.preview)).toEqual(["b again, over two lines", "a to d", "c only"]);
-    // and the time is when that one was sent, in Canberra time
+    // and the time is when that one was sent, in Canberra time: the clock part
+    // is worked out here with Intl directly, not with the page's formatter
+    const clock = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Australia/Canberra",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    });
     for (const row of rows) {
-      const sent = new Date(row.datetime);
-      expect(row.time).toBe(formatCanberra(sent));
+      expect(row.time).toMatch(/^[A-Z][a-z]{2} \d{1,2} [A-Z][a-z]{2}, \d{2}:\d{2}$/);
+      expect(row.time.endsWith(clock.format(new Date(row.datetime)))).toBe(true);
     }
     expect(new Date(rows[0]?.datetime ?? "").getTime()).toBeGreaterThan(t1);
     expect(new Date(rows[0]?.datetime ?? "").getTime()).toBeLessThan(t2);
