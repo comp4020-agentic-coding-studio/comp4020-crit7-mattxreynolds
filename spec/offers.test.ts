@@ -253,7 +253,7 @@ describe("the post page's three views (0023)", () => {
     expect(doc.querySelector(`form[action="/posts/${p.id}/offers"]`)).toBeTruthy();
   });
 
-  it("keeps who offered off the board, the edit page and Your offers of others", async () => {
+  it("keeps who offered off the board, the post page and the edit page for everyone but the poster", async () => {
     const p = await poster();
     const a = await offerer("offera");
     await submitOffer(a.cookie, p.id, { class: WED_9 });
@@ -261,6 +261,9 @@ describe("the post page's three views (0023)", () => {
     for (const path of ["/", `/posts/${p.id}/`]) {
       expect(text((await page(path, viewer.cookie)).querySelector("main")), path).not.toContain(a.username);
     }
+    // the edit page: refused to others, and to the poster it says only that offers are pending
+    expect(text((await page(`/posts/${p.id}/edit/`, viewer.cookie)).querySelector("main"))).not.toContain(a.username);
+    expect(text((await page(`/posts/${p.id}/edit/`, p.cookie)).querySelector("main"))).not.toContain(a.username);
     // the poster's own board entry shows a count, never the names
     expect(text((await page("/", p.cookie)).querySelector("main"))).not.toContain(a.username);
   });
