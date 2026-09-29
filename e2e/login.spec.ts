@@ -36,7 +36,7 @@ test("log in with one click as a demo student", async ({ page }, testInfo) => {
   await page.getByRole("button", { name: "priya", exact: true }).click();
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("heading", { name: "Board" })).toBeVisible();
-  await expect(page.getByRole("main").getByText("priya")).toBeVisible();
+  await expect(page.getByRole("main").locator("strong")).toHaveText("priya");
 
   await page.getByRole("button", { name: "Log out" }).click();
   await page.getByRole("button", { name: "Random demo student" }).click();

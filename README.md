@@ -8,8 +8,8 @@ student who's happy to swap says so, and the poster accepts or declines. It
 makes swapping visible, discussable and agreed by both students — it cannot
 change a real ANU allocation, and nothing here is official.
 
-The login and its demo students are built: everyone else — the board,
-offers, comments, private messages — arrives in the slices after it.
+The login, its demo students and the board with swap posts are built:
+offers, comments and private messages arrive in the slices after them.
 
 ## What good looks like here
 
@@ -46,20 +46,39 @@ a server restart never rewrites them.
 **Real names and uni IDs are allowed**, since the demo-login notice above
 already tells a student who can read what they post.
 
+**The board is home.** `/` lists every open swap post, newest first, with a
+student's own post pinned under "Your post" (or a "Post a swap" button when
+they have none). A post names the class the student is leaving, one or more
+classes they would join (never the one they are leaving) and an optional
+message of up to 500 characters. A student has at most one open post. Each
+post has its own page at `/posts/<id>/` with the whole message; the board
+cuts a long message short. Every time shown is Canberra time.
+
+**The classes are real COMP4020 crit-group sessions.** The six classes
+(Mon 14:00, Mon 15:30, Wed 09:00, Wed 10:30, Wed 14:00, Wed 15:30) come from
+the course's public crit-groups data at
+<https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/api/crit-groups.json>,
+copied into the app on 2026-09-29 and never fetched while it runs. Credit:
+COMP4020 Agentic Coding Studio (ANU School of Computing), Ben Swift, from
+<https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/>, licensed
+CC BY-NC-SA 4.0. The data is provisional until enrolments settle, so it may
+be out of date.
+
 ## What's enforced, and what's a judgement call
 
 The rules above that are checkable — the username shape, the password
 length, case-insensitive uniqueness, the 30-day cookie, the redirect and
 `next` handling, the guarded pages, the demo-login notice's presence — are
-asserted in `spec/auth.test.ts` against the built server. Whether the
+asserted in `spec/auth.test.ts` against the built server; the swap post
+rules in `spec/posts.test.ts` and `spec/events.test.ts`. Whether the
 sign-up and log-in pages actually *read* clearly, at a phone width and a
 desktop one, is a judgement call for the crit, not something a test can
 decide.
 
 ## Not built yet
 
-Swap posts, the board's content, offers, accepting and declining, comments
-and private messages are later slices (see the issue tracker). Automatic
+Editing and withdrawing a swap post, offers, accepting and declining,
+comments and private messages are later slices (see the issue tracker). Automatic
 matching (pairs, cycles, or a "fits your post" hint) is out of scope for the
 whole of this map, not just this slice — a student always finds a swap by
 reading the board and agreeing it directly with another student.

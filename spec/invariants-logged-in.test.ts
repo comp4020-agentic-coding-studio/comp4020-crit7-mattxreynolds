@@ -6,8 +6,11 @@ import { beforeAll, describe, expect, inject, it } from "vitest";
 // in spec/routes.ts logged OUT — so "/" there checks the login page, by
 // design (0048). This file gives the board the same invariant and
 // accessibility floor, fetched with a fresh student's own session cookie, to
-// cover the logged-in pages spec/invariants.test.ts can't see (0013).
+// cover the logged-in pages spec/invariants.test.ts can't see (0013): the
+// board, the new-post form, and (0020) a seeded post's own page — the first
+// demo post, which a fresh test database always has as post 1.
 const baseUrl = inject("baseUrl");
+const LOGGED_IN_ROUTES = ["/", "/posts/new/", "/posts/1/"];
 
 async function signUpAndGetCookie(username: string, password: string): Promise<string> {
   const res = await fetch(new URL("/api/signup", baseUrl), {
@@ -21,7 +24,7 @@ async function signUpAndGetCookie(username: string, password: string): Promise<s
   return `session=${match[1]}`;
 }
 
-describe("invariants: / (logged in)", () => {
+for (const route of LOGGED_IN_ROUTES) describe(`invariants: ${route} (logged in)`, () => {
   let status: number;
   let dom: JSDOM;
   let doc: Document;
@@ -29,10 +32,10 @@ describe("invariants: / (logged in)", () => {
   beforeAll(async () => {
     const username = `invlogin${process.hrtime.bigint() % 10_000_000n}`;
     const cookie = await signUpAndGetCookie(username, "invariant-password1");
-    const res = await fetch(new URL("/", baseUrl), { headers: { cookie } });
+    const res = await fetch(new URL(route, baseUrl), { headers: { cookie } });
     status = res.status;
     dom = new JSDOM(await res.text(), {
-      url: new URL("/", baseUrl).href,
+      url: new URL(route, baseUrl).href,
       runScripts: "outside-only",
       pretendToBeVisual: true,
     });

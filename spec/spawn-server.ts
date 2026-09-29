@@ -5,8 +5,12 @@ import { type AddressInfo, createServer } from "node:net";
  *  given database file. Used where a test needs its own server process — for
  *  example, proving a session survives an actual process restart on the same
  *  database — rather than the one shared server spec/global-setup.ts boots
- *  for every other spec test. */
-export async function spawnServer(databasePath: string): Promise<{ baseUrl: string; stop: () => Promise<void> }> {
+ *  for every other spec test. `extraEnv` is added to the server's environment
+ *  (for example a different TZ). */
+export async function spawnServer(
+  databasePath: string,
+  extraEnv: Record<string, string> = {},
+): Promise<{ baseUrl: string; stop: () => Promise<void> }> {
   const port = await new Promise<number>((resolve) => {
     const probe = createServer();
     probe.listen(0, () => {
@@ -21,6 +25,7 @@ export async function spawnServer(databasePath: string): Promise<{ baseUrl: stri
       HOST: "127.0.0.1",
       PORT: String(port),
       DATABASE_PATH: databasePath,
+      ...extraEnv,
     },
     stdio: "ignore",
   });
