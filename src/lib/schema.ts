@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { int, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { int, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // The schema is the ground truth for the database. To change it: edit here,
 // run `pnpm db:generate` to turn the diff into a migration under drizzle/,
@@ -33,5 +33,61 @@ export const sessions = sqliteTable("sessions", {
   expiresAt: text("expires_at").notNull(),
 });
 
+// The six crit-group sessions students swap between (0008, 0010). Rows are
+// written at boot from the committed seed file (src/lib/classes.ts); the app
+// never fetches them and no request changes them.
+export const classes = sqliteTable("classes", {
+  id: text().primaryKey(),
+  position: int().notNull(),
+  day: text().notNull(),
+  start: text().notNull(),
+  end: text().notNull(),
+  room: text().notNull(),
+  tutor: text().notNull(),
+});
+
+// A swap post (0016): one leaving class, its join classes beside it in
+// swap_post_join_classes, an optional message and when it was posted, as an
+// instant (0046 formats it for Canberra when shown).
+export const swapPosts = sqliteTable(
+  "swap_posts",
+  {
+    id: int().primaryKey({ autoIncrement: true }),
+    studentId: int("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    leavingClassId: text("leaving_class_id")
+      .notNull()
+      .references(() => classes.id),
+    message: text(),
+    status: text({ enum: ["open"] })
+      .notNull()
+      .default("open"),
+    postedAt: int("posted_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  // at most one open post per student (0017), enforced by the database so two
+  // simultaneous requests can't both get in
+  (table) => [
+    uniqueIndex("swap_posts_one_open_per_student_idx")
+      .on(table.studentId)
+      .where(sql`${table.status} = 'open'`),
+  ],
+);
+
+export const swapPostJoinClasses = sqliteTable(
+  "swap_post_join_classes",
+  {
+    postId: int("post_id")
+      .notNull()
+      .references(() => swapPosts.id, { onDelete: "cascade" }),
+    classId: text("class_id")
+      .notNull()
+      .references(() => classes.id),
+  },
+  (table) => [primaryKey({ columns: [table.postId, table.classId] })],
+);
+
 export type Student = typeof students.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
+export type SchoolClass = typeof classes.$inferSelect;
+export type SwapPost = typeof swapPosts.$inferSelect;

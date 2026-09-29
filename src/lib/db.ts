@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import { seedDemoStudents } from "./seed";
+import { seedClasses, seedDemoStudents } from "./seed";
 
 // One SQLite file is the app's whole persistent state. In production
 // fly.toml points DATABASE_PATH at the machine's volume (/data), which is
@@ -22,6 +22,10 @@ export const db = drizzle(client);
 // run them from. The flow: edit src/lib/schema.ts, `pnpm db:generate`,
 // commit the migration it writes to drizzle/.
 migrate(db, { migrationsFolder: "./drizzle" });
+
+// The classes are rewritten from their committed seed file at every boot; the
+// demo seed needs them, so they come first.
+seedClasses(db);
 
 // The demo seed runs after migrations, and only when no demo student exists
 // yet (0040): it is not a boot-time reset.

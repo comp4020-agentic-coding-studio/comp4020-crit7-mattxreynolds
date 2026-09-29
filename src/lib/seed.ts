@@ -1,13 +1,37 @@
 import { inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { CLASSES, type ClassId } from "./classes";
 import { hashPassword } from "./password";
-import { students } from "./schema";
+import { classes, students, swapPostJoinClasses, swapPosts } from "./schema";
 
 // The demo students (0014, 0037): first-name usernames sharing one published
-// password. Later slices add the posts, offers, comments and private
-// messages written for them (0038) beside these rows.
+// password, and the posts written for them (0038). Later slices add the
+// offers, comments and private messages beside these rows.
 export const DEMO_USERNAMES = ["alex", "priya", "sam", "lena", "jordan", "mei", "noah"] as const;
 export const DEMO_PASSWORD = "demo-student";
+
+// The classes come from the committed seed file (src/lib/classes.ts) on every
+// boot, so a corrected file reaches the deployed volume; nothing else writes
+// them.
+export function seedClasses(db: BetterSQLite3Database): void {
+  db.transaction((tx) => {
+    CLASSES.forEach((c, position) => {
+      tx.insert(classes)
+        .values({ ...c, position })
+        .onConflictDoUpdate({ target: classes.id, set: { ...c, position } })
+        .run();
+    });
+  });
+}
+
+// The open posts (0038) that exist so far, with times set relative to when
+// the seed runs: alex's is the oldest, lena's the newest.
+const HOUR = 60 * 60 * 1000;
+const DEMO_POSTS: { username: string; leaving: ClassId; joins: ClassId[]; message?: string; hoursAgo: number }[] = [
+  { username: "alex", leaving: "shitao", joins: ["baishi", "dachi"], message: "Clashes with my lab.", hoursAgo: 68 },
+  { username: "priya", leaving: "baishi", joins: ["shitao", "bada"], hoursAgo: 40 },
+  { username: "lena", leaving: "bada", joins: ["yunlin", "liuru"], hoursAgo: 5 },
+];
 
 // Written only when no demo student exists (0040): a fresh volume or a fresh
 // test database. A boot never tops up a partly present seed, or a restart
@@ -21,13 +45,36 @@ export function seedDemoStudents(db: BetterSQLite3Database): void {
     .get();
   if (existing) return;
 
+  const now = Date.now();
   db.transaction((tx) => {
+    const ids = new Map<string, number>();
     for (const username of DEMO_USERNAMES) {
       // a clash with an existing student (usernames are unique ignoring case)
       // leaves that student alone rather than stopping the server booting
-      tx.insert(students)
+      const row = tx
+        .insert(students)
         .values({ username, passwordHash: hashPassword(DEMO_PASSWORD) })
         .onConflictDoNothing()
+        .returning({ id: students.id })
+        .get();
+      if (row) ids.set(username, row.id);
+    }
+
+    for (const post of DEMO_POSTS) {
+      const studentId = ids.get(post.username);
+      if (studentId === undefined) continue;
+      const { id } = tx
+        .insert(swapPosts)
+        .values({
+          studentId,
+          leavingClassId: post.leaving,
+          message: post.message ?? null,
+          postedAt: new Date(now - post.hoursAgo * HOUR),
+        })
+        .returning({ id: swapPosts.id })
+        .get();
+      tx.insert(swapPostJoinClasses)
+        .values(post.joins.map((classId) => ({ postId: id, classId })))
         .run();
     }
   });
