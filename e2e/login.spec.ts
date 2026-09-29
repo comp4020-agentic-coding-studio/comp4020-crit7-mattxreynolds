@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { screenshotPath } from "./evidence";
 import { boxes } from "./geometry";
+import { logOut } from "./nav";
 
 // The login slice's core flow in a real browser, at both viewports, for the
 // handoff screenshots: sign up, reach the board, and log out.
@@ -14,12 +15,12 @@ test("sign up, reach the board, and log out", async ({ page }, testInfo) => {
   await page.getByRole("button", { name: "Sign up" }).click();
 
   await expect(page).toHaveURL("/");
-  await expect(page.getByRole("heading", { name: "Board" })).toBeVisible();
-  await expect(page.getByText(username)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Agentic Coding Studio" })).toBeVisible();
+  await expect(page.locator(".nav-username")).toHaveText(username);
 
   await page.screenshot({ path: screenshotPath(testInfo, "board") });
 
-  await page.getByRole("button", { name: "Log out" }).click();
+  await logOut(page);
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("heading", { name: "Log in" })).toBeVisible();
 });
@@ -36,13 +37,13 @@ test("log in with one click as a demo student", async ({ page }, testInfo) => {
 
   await page.getByRole("button", { name: "priya", exact: true }).click();
   await expect(page).toHaveURL("/");
-  await expect(page.getByRole("heading", { name: "Board" })).toBeVisible();
-  await expect(page.getByRole("main").locator("strong")).toHaveText("priya");
+  await expect(page.getByRole("heading", { name: "Agentic Coding Studio" })).toBeVisible();
+  await expect(page.locator(".nav-username")).toHaveText("priya");
 
-  await page.getByRole("button", { name: "Log out" }).click();
+  await logOut(page);
   await page.getByRole("button", { name: "Random demo student" }).click();
   await expect(page).toHaveURL("/");
-  await expect(page.getByRole("heading", { name: "Board" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Agentic Coding Studio" })).toBeVisible();
 });
 
 // Issue #36: login's two cards sit side by side on a wide screen and stack on
@@ -64,8 +65,15 @@ test("login and signup share one card, and the demo students sit beside or under
 
   await page.goto("/signup/");
   await expect(page.locator(".demo-students")).toHaveCount(0);
-  const { card } = await boxes(page, { card: ".auth-card" });
-  expect(Math.abs(card.width - form.width), "signup's card is login's card").toBeLessThan(2);
-  expect(Math.abs(card.x - form.x), "and starts at the same edge").toBeLessThan(2);
+  // signup is its own centred column, wider than login's card beside the demo students, but the same card
+  const cardStyle = (selector: string) =>
+    page.locator(selector).first().evaluate((el) => {
+      const s = getComputedStyle(el);
+      return [s.backgroundColor, s.borderRadius, s.boxShadow, s.paddingLeft].join("|");
+    });
+  const signupStyle = await cardStyle(".auth-card");
+  await page.goto("/login/");
+  expect(signupStyle, "signup's card is login's card").toBe(await cardStyle(".auth-card"));
+  await page.goto("/signup/");
   await page.screenshot({ path: screenshotPath(testInfo, "signup"), fullPage: true });
 });

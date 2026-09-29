@@ -1,6 +1,7 @@
 import { type Page, expect, test } from "@playwright/test";
 import { boxes } from "./geometry";
 import { screenshotPath } from "./evidence";
+import { logOut, openMenu } from "./nav";
 
 async function signUp(page: Page, username: string) {
   await page.goto("/signup/");
@@ -26,12 +27,12 @@ test("make an offer, see it after a reload, and withdraw it", async ({ page }, t
   await join.getByRole("checkbox", { name: "Wed 09:00–10:30" }).check();
   await join.getByRole("checkbox", { name: "Wed 10:30–12:00" }).check();
   await page.getByRole("button", { name: "Post swap" }).click();
-  await expect(page.locator("#your-post ~ .post .offer-count")).toHaveText("0 pending offers");
+  await expect(page.locator("#your-post ~ .your-swap-panel .board-post .offer-count")).toHaveText("0 pending offers");
   const postUrl = new URL(
-    (await page.locator("#your-post ~ .post").getByRole("link", { name: "View post" }).getAttribute("href")) ?? "",
+    (await page.locator("#your-post ~ .your-swap-panel .board-post").getByRole("link", { name: "View post" }).getAttribute("href")) ?? "",
     "http://x",
   ).pathname;
-  await page.getByRole("button", { name: "Log out" }).click();
+  await logOut(page);
 
   // the offerer: two join classes, so nothing is pre-selected
   await signUp(page, offerer);
@@ -49,11 +50,12 @@ test("make an offer, see it after a reload, and withdraw it", async ({ page }, t
   await page.screenshot({ path: screenshotPath(testInfo, "post-page-offerer"), fullPage: true });
 
   // the board's "Your offers", then everyone else's view of the post
+  await openMenu(page);
   await page.getByRole("navigation").getByRole("link", { name: "Board" }).click();
   await expect(page.locator("#your-offers ~ ul .own-offer")).toContainText(`${poster}'s post`);
   await expect(page.locator("#your-offers ~ ul .own-offer")).toContainText("Pending");
   await page.screenshot({ path: screenshotPath(testInfo, "board-your-offers"), fullPage: true });
-  await page.getByRole("button", { name: "Log out" }).click();
+  await logOut(page);
 
   await signUp(page, bystander);
   await page.goto(postUrl);
@@ -61,7 +63,7 @@ test("make an offer, see it after a reload, and withdraw it", async ({ page }, t
   await expect(page.getByText(offerer)).toHaveCount(0);
   await expect(page.locator("#your-offers")).toHaveCount(0);
   await page.screenshot({ path: screenshotPath(testInfo, "post-page-bystander"), fullPage: true });
-  await page.getByRole("button", { name: "Log out" }).click();
+  await logOut(page);
 
   // the poster sees who offered, and the post is locked for editing
   await page.goto("/login/");
@@ -73,7 +75,7 @@ test("make an offer, see it after a reload, and withdraw it", async ({ page }, t
   await page.screenshot({ path: screenshotPath(testInfo, "post-page-poster"), fullPage: true });
   await page.getByRole("link", { name: "Edit" }).click();
   await expect(page.getByRole("alert")).toContainText("pending offers");
-  await page.getByRole("button", { name: "Log out" }).click();
+  await logOut(page);
 
   // the offerer withdraws from the board and can offer again
   await page.goto("/login/");
@@ -115,10 +117,11 @@ test.describe("accepting and declining", () => {
     await join.getByRole("checkbox", { name: "Wed 10:30–12:00" }).check();
     await page.getByRole("button", { name: "Post swap" }).click();
     const postUrl = new URL(
-      (await page.locator("#your-post ~ .post").getByRole("link", { name: "View post" }).getAttribute("href")) ?? "",
+      (await page.locator("#your-post ~ .your-swap-panel .board-post").getByRole("link", { name: "View post" }).getAttribute("href")) ?? "",
       "http://x",
     ).pathname;
-    await page.getByRole("button", { name: "Log out" }).click();
+    // no JavaScript, so the account menu stays shut: drop the session as logging out would
+    await page.context().clearCookies();
 
     for (const [username, cls] of [
       [declined, "Wed 10:30–12:00"],
@@ -128,7 +131,8 @@ test.describe("accepting and declining", () => {
       await page.goto(postUrl);
       await page.getByRole("radio", { name: cls }).check();
       await page.getByRole("button", { name: "Offer to swap" }).click();
-      await page.getByRole("button", { name: "Log out" }).click();
+      // no JavaScript, so the account menu stays shut: drop the session as logging out would
+      await page.context().clearCookies();
     }
 
     // the poster declines the first offer: one click, and the post stays open
@@ -155,14 +159,17 @@ test.describe("accepting and declining", () => {
     await page.screenshot({ path: screenshotPath(testInfo, "post-page-swapped"), fullPage: true });
 
     // the poster's board spot links to the swapped post; the others see their labels
-    await page.getByRole("navigation").getByRole("link", { name: "Board" }).click();
+    // no JavaScript, so a phone's menu button does nothing: go to the board by address
+    await page.goto("/");
     await expect(page.getByRole("link", { name: "Post a swap" })).toBeVisible();
-    await expect(page.locator("#your-post ~ .swapped-line").getByRole("link")).toHaveAttribute("href", postUrl);
-    await page.getByRole("button", { name: "Log out" }).click();
+    await expect(page.locator("#your-post ~ .your-swap-panel .swapped-line").getByRole("link")).toHaveAttribute("href", postUrl);
+    // no JavaScript, so the account menu stays shut: drop the session as logging out would
+    await page.context().clearCookies();
 
     await logIn(declined);
     await expect(page.locator("#your-offers ~ ul .own-offer")).toContainText("Declined");
-    await page.getByRole("button", { name: "Log out" }).click();
+    // no JavaScript, so the account menu stays shut: drop the session as logging out would
+    await page.context().clearCookies();
     await logIn(accepted);
     await expect(page.locator("#your-offers ~ ul .own-offer")).toContainText("Accepted");
   });
@@ -187,20 +194,20 @@ test("the post page is a split on a wide screen and stacks on a phone", async ({
   await page.getByLabel(/Message/).fill("Clashes with my lab, happy to go either Wednesday morning.");
   await page.getByRole("button", { name: "Post swap" }).click();
   const postUrl = new URL(
-    (await page.locator("#your-post ~ .post").getByRole("link", { name: "View post" }).getAttribute("href")) ?? "",
+    (await page.locator("#your-post ~ .your-swap-panel .board-post").getByRole("link", { name: "View post" }).getAttribute("href")) ?? "",
     "http://x",
   ).pathname;
   await page.goto(postUrl);
   await page.getByLabel(/Add a comment/).fill("Anyone free on Wednesday?");
   await page.getByRole("button", { name: "Comment", exact: true }).click();
-  await page.getByRole("button", { name: "Log out" }).click();
+  await logOut(page);
 
   for (const username of offerers) {
     await signUp(page, username);
     await page.goto(postUrl);
     await page.getByRole("radio", { name: "Wed 09:00–10:30" }).check();
     await page.getByRole("button", { name: "Offer to swap" }).click();
-    await page.getByRole("button", { name: "Log out" }).click();
+    await logOut(page);
   }
 
   await page.goto("/login/");
@@ -209,16 +216,16 @@ test("the post page is a split on a wide screen and stacks on a phone", async ({
   await page.getByRole("button", { name: "Log in" }).click();
   await page.goto(postUrl);
   await expect(page.locator(".offers li")).toHaveCount(2);
-  await expect(page.locator(".post-header .exchange .giving")).toContainText("Mon 14:00–15:30");
-  await expect(page.locator(".post-header .exchange .looking-for")).toContainText("Wed 09:00–10:30, Wed 10:30–12:00");
+  await expect(page.locator(".post-header .swap-exchange .swap-giving")).toContainText("Mon 14:00–15:30");
+  await expect(page.locator(".post-header .swap-exchange .swap-looking")).toContainText(/Wed 09:00–10:30\s*Wed 10:30–12:00/);
 
   // a live refetch can swap the page's nodes at any moment: boxes() reads them
   // all in one go, and toPass waits out the page settling
   await expect(async () => {
     const b = await boxes(page, {
       header: ".post-header",
-      giving: ".post-header .exchange .giving",
-      looking: ".post-header .exchange .looking-for",
+      giving: ".post-header .swap-exchange .swap-giving",
+      looking: ".post-header .swap-exchange .swap-looking",
       side: ".side-column",
       comments: ".comments",
       commentBox: "form.comment-form",
@@ -238,10 +245,10 @@ test("the post page is a split on a wide screen and stacks on a phone", async ({
       // the comment box is under the thread, in the thread's column
       expect(b.commentBox.y).toBeGreaterThanOrEqual(b.comments.y + b.comments.height - 1);
       expect(Math.abs(b.commentBox.x - b.comments.x)).toBeLessThanOrEqual(2);
-      // one row: the buttons are to the right of who offered, on its line
-      expect(b.accept.x).toBeGreaterThanOrEqual(b.who.x + b.who.width - 1);
-      expect(b.accept.y).toBeLessThan(b.who.y + b.who.height);
-      expect(b.decline.y).toBeLessThan(b.who.y + b.who.height);
+      // the column is narrow: the buttons sit under who offered, side by side on one line, inside the same row
+      expect(b.accept.y).toBeGreaterThanOrEqual(b.who.y + b.who.height - 1);
+      expect(Math.abs(b.accept.y - b.decline.y)).toBeLessThanOrEqual(4);
+      expect(b.decline.x).toBeGreaterThanOrEqual(b.accept.x + b.accept.width - 1);
     } else {
       // stacked: header, actions, comments, comment box, each below the last
       expect(b.side.y).toBeGreaterThanOrEqual(b.header.y + b.header.height - 1);
@@ -263,14 +270,9 @@ test("the post page is a split on a wide screen and stacks on a phone", async ({
 
   await page.screenshot({ path: screenshotPath(testInfo, "post-split"), fullPage: true });
 
-  // nothing left to act on: the withdrawn post has no side column, so the
-  // thread takes the header's whole width
+  // nothing left to act on: the withdrawn post's offers panel says so and has no rows or buttons
   await page.getByRole("button", { name: "Withdraw" }).click();
-  await expect(page.locator(".side-column")).toHaveCount(0);
-  await expect(async () => {
-    const { header, comments } = await boxes(page, { header: ".post-header", comments: ".comments" });
-    expect(Math.abs(comments.x - header.x)).toBeLessThanOrEqual(2);
-    expect(comments.width).toBeGreaterThanOrEqual(header.width - 2);
-    expect(comments.y).toBeGreaterThanOrEqual(header.y + header.height - 1);
-  }).toPass();
+  await expect(page.locator(".offers li")).toHaveCount(0);
+  await expect(page.locator(".side-column .no-offers")).toHaveText("No pending offers.");
+  await expect(page.locator(".side-column").getByRole("button")).toHaveCount(0);
 });

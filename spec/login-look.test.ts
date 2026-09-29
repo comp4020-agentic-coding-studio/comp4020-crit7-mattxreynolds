@@ -26,7 +26,7 @@ describe("the one plain line (0053)", () => {
     for (const path of ["/", "/login/", "/signup/"]) {
       const doc = await page(path);
       // the page is its heading, at most the one line, and the cards: nothing else can be a hero
-      const kids = [...(doc.querySelector("main .auth-page")?.children ?? [])].map((el) => (el.matches("h1, .tagline, .auth-card") ? el.tagName : `unexpected ${el.tagName}`));
+      const kids = [...(doc.querySelector("main .auth-page")?.children ?? [])].map((el) => (el.matches(".auth-heading, h1, .tagline, .auth-card") ? el.tagName : `unexpected ${el.tagName}`));
       expect(kids.filter((k) => k.startsWith("unexpected")), path).toEqual([]);
       expect(doc.querySelector("main")?.children, path).toHaveLength(1);
       expect(doc.querySelector("main img, main picture, main svg, [class*='hero']"), path).toBeNull();
@@ -61,7 +61,7 @@ describe("signup takes login's panel and heading style (0055)", () => {
       const doc = await page(path);
       const card = doc.querySelector("main .auth-page .auth-card");
       expect(card, path).toBeTruthy();
-      expect(doc.querySelector("main .auth-page > h1"), path).toBeTruthy();
+      expect(doc.querySelector("main .auth-page h1"), path).toBeTruthy();
       expect(card?.querySelector("form input[name=username]"), path).toBeTruthy();
       expect(card?.querySelector("form input[name=password]"), path).toBeTruthy();
       expect(card?.querySelector("button.primary"), path).toBeTruthy();

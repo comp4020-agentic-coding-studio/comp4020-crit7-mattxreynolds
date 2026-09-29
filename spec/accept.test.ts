@@ -53,7 +53,7 @@ async function offer(from: { cookie: string }, on: { postId: number }, offered: 
 }
 
 const boardPosters = async (cookie: string) =>
-  [...(await page("/", cookie)).querySelectorAll("#open-posts ~ .post h3")].map((h) => text(h));
+  [...(await page("/", cookie)).querySelectorAll("#open-posts ~ .board-post h3")].map((h) => text(h));
 const get = (path: string, cookie: string | null) =>
   fetch(new URL(path, baseUrl), { headers: cookie ? { cookie } : {}, redirect: "manual" });
 const main = async (path: string, cookie: string) => text((await page(path, cookie)).querySelector("main"));
@@ -286,7 +286,7 @@ describe("after an accept", () => {
     expect((await submitPost(o.cookie, { leaving: WED_9, join: [WED_1530] })).status).toBe(303);
     const after = await spot(p.cookie);
     expect(after?.querySelector(`a[href="/posts/${p.postId}/"]`)).toBeNull();
-    expect(after?.querySelector(".post")).not.toBeNull();
+    expect(after?.querySelector(".board-post")).not.toBeNull();
   });
 });
 
@@ -379,7 +379,7 @@ describe("the demo seed's accept cascade (0038)", () => {
     try {
       const at = (path: string, cookie: string) => page(path, cookie, server.baseUrl);
       const own = async (cookie: string) =>
-        (await at("/", cookie)).querySelector('#your-post ~ .post a[href^="/posts/"]')?.getAttribute("href") ?? "";
+        (await at("/", cookie)).querySelector('#your-post ~ .your-swap-panel .board-post a[href^="/posts/"]')?.getAttribute("href") ?? "";
       const yours = async (cookie: string) =>
         [...(await at("/", cookie)).querySelectorAll("#your-offers ~ ul .own-offer")].map((el) => text(el));
 
@@ -416,11 +416,11 @@ describe("the demo seed's accept cascade (0038)", () => {
       const alexSpot = (await at("/", alex)).querySelector('section[aria-labelledby="your-post"]');
       expect(alexSpot?.querySelector('a[href="/posts/new/"]')?.textContent?.trim()).toBe("Post a swap");
       expect(alexSpot?.querySelector(`a[href="${alexPost}"]`)).not.toBeNull();
-      expect((await at("/", priya)).querySelector('#your-post ~ a[href="/posts/new/"]')).not.toBeNull();
+      expect((await at("/", priya)).querySelector('#your-post ~ .your-swap-panel a[href="/posts/new/"]')).not.toBeNull();
 
       // lena's post is untouched: still open with nothing pending
-      expect(text((await at("/", sam)).querySelector("#open-posts ~ .post h3"))).toBe("lena");
-      expect(text((await at("/", sam)).querySelector("#open-posts ~ .post .offer-count"))).toBe("0 pending offers");
+      expect(text((await at("/", sam)).querySelector("#open-posts ~ .board-post h3"))).toBe("lena");
+      expect(text((await at("/", sam)).querySelector("#open-posts ~ .board-post .offer-count"))).toBe("0 pending offers");
     } finally {
       await server.stop();
     }
@@ -475,10 +475,10 @@ describe("the demo seed's accept cascade (0038)", () => {
         `Swapped: jordan moves to ${label(WED_1530)}, mei moves to ${label(WED_14)}. Make the change in MyTimetable. This app can't.`,
       );
       const board = await page("/", jordan, server.baseUrl);
-      expect(board.querySelector('#your-post ~ a[href="/posts/new/"]')?.textContent?.trim()).toBe("Post a swap");
-      expect(board.querySelector(`#your-post ~ p a[href="${swappedPath}"]`)).not.toBeNull();
+      expect(board.querySelector('#your-post ~ .your-swap-panel a[href="/posts/new/"]')?.textContent?.trim()).toBe("Post a swap");
+      expect(board.querySelector(`#your-post ~ .your-swap-panel p a[href="${swappedPath}"]`)).not.toBeNull();
       // the swapped post is off the board for everyone
-      expect([...board.querySelectorAll("#open-posts ~ .post h3")].map((h) => text(h))).toEqual(["lena", "priya", "alex"]);
+      expect([...board.querySelectorAll("#open-posts ~ .board-post h3")].map((h) => text(h))).toEqual(["lena", "priya", "alex"]);
       const meiLines = [...(await page("/", mei, server.baseUrl)).querySelectorAll("#your-offers ~ ul .own-offer")].map((el) => text(el));
       expect(meiLines).toEqual([`jordan's post You would leave ${label(WED_1530)} Accepted`]);
     } finally {

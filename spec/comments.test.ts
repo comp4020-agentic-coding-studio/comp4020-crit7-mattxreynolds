@@ -92,7 +92,7 @@ async function commentBox(path: string, cookie: string): Promise<boolean> {
 /** The board's "N comments" line for post `postId`, as `cookie` sees the board. */
 async function boardCount(postId: number, cookie: string): Promise<string | null> {
   const doc = await page("/", cookie);
-  const article = [...doc.querySelectorAll("article.post")].find((a) => a.querySelector(`a[href="/posts/${postId}/"]`));
+  const article = [...doc.querySelectorAll("article.board-post")].find((a) => a.querySelector(`a[href="/posts/${postId}/"]`));
   return article ? text(article.querySelector(".comment-count")) : null;
 }
 
@@ -493,7 +493,7 @@ describe("the demo seed's comments", () => {
       // and through the app: alex's board line and post page, and jordan's post
       const alex = await demoCookie("alex", server.baseUrl);
       const board = await page("/", alex, server.baseUrl);
-      expect(text(board.querySelector("#your-post ~ .post .comment-count"))).toBe("2 comments");
+      expect(text(board.querySelector("#your-post ~ .your-swap-panel .board-post .comment-count"))).toBe("2 comments");
       const alexPostId = rows.find((r) => r.poster === "alex")?.post;
       const doc = await page(`/posts/${alexPostId}/`, alex, server.baseUrl);
       const entries = [...doc.querySelectorAll(".comment")].map((li) => [

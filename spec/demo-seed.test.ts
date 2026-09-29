@@ -33,7 +33,7 @@ function sessionCookieFrom(res: Response): string | null {
 async function loggedInAs(cookie: string, origin = baseUrl): Promise<string | null> {
   const res = await fetch(new URL("/", origin), { headers: { cookie } });
   const html = await res.text();
-  return new JSDOM(html).window.document.querySelector("main strong")?.textContent ?? null;
+  return new JSDOM(html).window.document.querySelector(".nav-username")?.textContent?.trim() ?? null;
 }
 
 async function loginPage(path = "/login/"): Promise<Document> {

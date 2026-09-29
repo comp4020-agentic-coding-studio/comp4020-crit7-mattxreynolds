@@ -36,7 +36,7 @@ describe("new post", () => {
   it("is one column with the post form as one card, fieldsets and message inside it", async () => {
     const doc = await page("/posts/new/", offerer);
     const column = doc.querySelector("main > .form-page");
-    expect(column?.querySelector(":scope > h1")?.textContent).toBe("Post a swap");
+    expect(column?.querySelector("h1")?.textContent).toBe("Post a swap");
     const form = column?.querySelector("form#post-form.form-card");
     expect(form?.querySelectorAll("fieldset")).toHaveLength(2);
     expect(form?.querySelector("textarea#message")).toBeTruthy();
@@ -70,7 +70,7 @@ describe("edit post", () => {
     expect((await submitPost(offerer, { leaving: MON_14, join: [WED_9] })).status).toBe(303);
     const id = await ownPostId(offerer);
     const doc = await page(`/posts/${id}/edit/`, offerer);
-    expect(doc.querySelector(".form-page > h1")?.textContent).toBe("Edit your swap post");
+    expect(doc.querySelector(".form-page h1")?.textContent).toBe("Edit your swap post");
     expect(doc.querySelector(".form-page form#post-form.form-card button.primary")?.textContent?.trim()).toBe("Save changes");
   });
 });
@@ -100,8 +100,8 @@ describe("the accept step", () => {
 describe("About", () => {
   it("is the README in one article that is the page's only content", async () => {
     const doc = await page("/readme/");
-    const article = doc.querySelector("main > article.readme-page");
-    expect(article?.querySelector("h1")?.textContent).toBe("C7: the tutorial swap board");
+    const article = doc.querySelector("main > .about-page > article.readme-page");
+    expect(article?.querySelector(".readme-document-title")?.textContent).toBe("C7: the tutorial swap board");
     expect(doc.querySelectorAll("main > *")).toHaveLength(1);
   });
 });

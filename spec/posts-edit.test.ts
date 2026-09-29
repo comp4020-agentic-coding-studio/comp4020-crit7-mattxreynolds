@@ -29,7 +29,11 @@ async function postedStudent(fields = OK) {
   return { cookie, id, username: await usernameOf(cookie) };
 }
 
-const pinned = async (cookie: string) => [...(await page("/", cookie)).querySelectorAll("#your-post ~ .post")];
+const pinned = async (cookie: string) => [...(await page("/", cookie)).querySelectorAll("#your-post ~ .your-swap-panel .board-post")];
+// the pinned post plus the message that sits above it (the entry itself carries no message)
+const pinnedPanel = async (cookie: string) => text((await page("/", cookie)).querySelector("#your-post ~ .your-swap-panel"));
+// a board entry's posted and edited times are read out, not drawn (they sit in one visually hidden line)
+const editedOn = (entry: Element) => /edited/i.test(text(entry)) && entry.querySelectorAll("time").length === 2;
 
 describe("editing a swap post", () => {
   it("changes the post, and the board entry and post page then show edited with the time", async () => {
@@ -47,10 +51,10 @@ describe("editing a swap post", () => {
       lookingFor: [classLabel(CLASSES[4]), classLabel(CLASSES[5])],
       givingFirst: true,
     });
-    expect(text(entry)).toContain("Now it is my exam.");
-    expect(text(entry)).not.toContain("Clashes with my lab.");
-    expect(text(entry.querySelector(".edited"))).toMatch(/^Edited /);
-    expect(text(entry.querySelector(".edited time"))).toMatch(TIME);
+    expect(await pinnedPanel(cookie)).toContain("Now it is my exam.");
+    expect(await pinnedPanel(cookie)).not.toContain("Clashes with my lab.");
+    expect(editedOn(entry)).toBe(true);
+    expect(text(entry.querySelectorAll("time")[1])).toMatch(TIME);
 
     const doc = await page(`/posts/${id}/`, cookie);
     expect(text(doc.querySelector(".message"))).toBe("Now it is my exam.");
@@ -66,12 +70,12 @@ describe("editing a swap post", () => {
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toBe("/");
     expect(res.headers.getSetCookie().some((c) => c.startsWith("flash="))).toBe(true);
-    expect((await pinned(cookie))[0].querySelector(".edited")).toBeNull();
+    expect(/edited/i.test(text((await pinned(cookie))[0]))).toBe(false);
     expect((await page(`/posts/${id}/`, cookie)).querySelector(".edited")).toBeNull();
 
     // a real change afterwards does mark it
     await submitEdit(cookie, id, { leaving: MON_14, join: [WED_9], message: OK.message });
-    expect((await pinned(cookie))[0].querySelector(".edited")).toBeTruthy();
+    expect(editedOn((await pinned(cookie))[0])).toBe(true);
   });
 
   it("shows the edit form filled with the post as it stands", async () => {
@@ -107,8 +111,8 @@ describe("editing a swap post", () => {
       expect(editAlert, label).toBe(alert(await create.text()));
     }
     const [entry] = await pinned(cookie);
-    expect(text(entry)).toContain("Clashes with my lab.");
-    expect(entry.querySelector(".edited")).toBeNull();
+    expect(await pinnedPanel(cookie)).toContain("Clashes with my lab.");
+    expect(/edited/i.test(text(entry))).toBe(false);
   });
 
   it("keeps what was typed when it refuses", async () => {
@@ -143,9 +147,8 @@ describe("editing a swap post", () => {
     expect(get.status).toBe(403);
     expect(await get.text()).not.toContain("Clashes with my lab.");
 
-    const [entry] = await pinned(cookie);
-    expect(text(entry)).toContain("Clashes with my lab.");
-    expect(text(entry)).not.toContain("hijacked");
+    expect(await pinnedPanel(cookie)).toContain("Clashes with my lab.");
+    expect(await pinnedPanel(cookie)).not.toContain("hijacked");
   });
 
   it("is 404 for a post that never existed, and needs a login", async () => {
@@ -164,8 +167,8 @@ describe("editing a swap post", () => {
     const { cookie, id } = await postedStudent();
     const viewer = await newStudent("viewer");
     const board = await page("/", cookie);
-    expect(board.querySelector(`#your-post ~ .post a[href="/posts/${id}/edit/"]`)).toBeTruthy();
-    expect(board.querySelector(`#your-post ~ .post form[action="/posts/${id}/withdraw"] button`)).toBeTruthy();
+    expect(board.querySelector(`#your-post ~ .your-swap-panel .board-post a[href="/posts/${id}/edit/"]`)).toBeTruthy();
+    expect(board.querySelector(`#your-post ~ .your-swap-panel .board-post form[action="/posts/${id}/withdraw"] button`)).toBeTruthy();
 
     const own = await page(`/posts/${id}/`, cookie);
     expect(own.querySelector(`a[href="/posts/${id}/edit/"]`)).toBeTruthy();
@@ -183,7 +186,7 @@ describe("withdrawing a swap post", () => {
     const { cookie, id, username } = await postedStudent();
     const viewer = await newStudent("viewer");
     const onBoard = async (c: string) =>
-      [...(await page("/", c)).querySelectorAll("main .post")].some(
+      [...(await page("/", c)).querySelectorAll("main .board-post")].some(
         (el) => text(el.querySelector("h3")) === username && exchangeOf(el)?.giving.includes(classLabel(CLASSES[0])),
       );
     expect(await onBoard(viewer)).toBe(true);
@@ -192,9 +195,9 @@ describe("withdrawing a swap post", () => {
     expect(res.status).toBe(303);
 
     const mine = await page("/", cookie);
-    expect(mine.querySelectorAll("#your-post ~ .post")).toHaveLength(0);
-    expect(text(mine.querySelector('#your-post ~ a[href="/posts/new/"]'))).toBe("Post a swap");
-    const names = [...(await page("/", viewer)).querySelectorAll(".post h3")].map((h) => text(h));
+    expect(mine.querySelectorAll("#your-post ~ .your-swap-panel .board-post")).toHaveLength(0);
+    expect(text(mine.querySelector('#your-post ~ .your-swap-panel a[href="/posts/new/"]'))).toBe("Post a swap");
+    const names = [...(await page("/", viewer)).querySelectorAll(".board-post h3")].map((h) => text(h));
     expect(names).not.toContain(username);
 
     expect((await submitPost(cookie, { leaving: WED_14, join: [WED_9] })).status).toBe(303);

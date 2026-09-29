@@ -1,6 +1,7 @@
 import { type Browser, type BrowserContext, type Locator, type Page, expect, test, type TestInfo } from "@playwright/test";
 import { screenshotPath } from "./evidence";
 import { boxes } from "./geometry";
+import { openMenu } from "./nav";
 
 // Issue #24 (0030, 0031, 0034): starting a conversation from a post page, and
 // a private message arriving in the other student's open conversation with no
@@ -50,7 +51,7 @@ test("a private message from another student appears live and leaves a half-type
   const alex = await alexContext.newPage();
   await signUp(alex, alexName);
   await postSwap(alex, "Clashes with my lab.");
-  const href = await alex.locator("#your-post ~ .post").getByRole("link", { name: "View post" }).getAttribute("href");
+  const href = await alex.locator("#your-post ~ .your-swap-panel .board-post").getByRole("link", { name: "View post" }).getAttribute("href");
   const postPath = new URL(href ?? "", "http://x").pathname;
 
   // sam starts from the "Message" link beside alex's name on the post page
@@ -145,6 +146,7 @@ test("the header counts unread private messages and the inbox shows them in bold
   const me = await meContext.newPage();
   await signUp(me, meName);
   await me.goto("/messages/");
+  await openMenu(me);
   await expect(me.getByRole("link", { name: "Messages", exact: true })).toBeVisible();
   await expect(me.getByText(/no conversations yet/i)).toBeVisible();
 
@@ -166,8 +168,10 @@ test("the header counts unread private messages and the inbox shows them in bold
   }
 
   // not live: the header only moves when the page loads again
+  await openMenu(me);
   await expect(me.getByRole("link", { name: /^Messages/ })).toHaveText("Messages");
   await me.reload();
+  await openMenu(me);
   await expect(me.getByRole("link", { name: "Messages (3)" })).toBeVisible();
 
   await me.getByRole("link", { name: "Messages (3)" }).click();
@@ -195,6 +199,7 @@ test("the header counts unread private messages and the inbox shows them in bold
   // opening one conversation clears its private messages only
   await rows.nth(1).getByRole("link").click();
   await expect(me).toHaveURL(`/messages/${names[0]}/`);
+  await openMenu(me);
   await expect(me.getByRole("link", { name: "Messages (2)" })).toBeVisible();
   await me.getByRole("link", { name: "Messages (2)" }).click();
   await expect(rows.nth(0)).toContainText(names[1] ?? "");
@@ -207,6 +212,7 @@ test("the header counts unread private messages and the inbox shows them in bold
   await expectNoSidewaysScroll(me);
 
   await rows.nth(0).getByRole("link").click();
+  await openMenu(me);
   await expect(me.getByRole("link", { name: "Messages", exact: true })).toBeVisible();
   await meContext.close();
 });

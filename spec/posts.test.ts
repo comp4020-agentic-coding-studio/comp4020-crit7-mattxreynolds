@@ -28,7 +28,7 @@ const OK = { leaving: MON_14, join: [WED_9, WED_1030] };
 
 async function boardEntries(cookie: string, section: "your-post" | "open-posts"): Promise<Element[]> {
   const doc = await page("/", cookie);
-  return [...doc.querySelectorAll(`#${section} ~ .post`)];
+  return [...doc.querySelectorAll(`#${section} ~ .board-post, #${section} ~ .your-swap-panel .board-post`)];
 }
 
 describe("creating a swap post", () => {
@@ -42,14 +42,15 @@ describe("creating a swap post", () => {
     // "reload": a fresh request, then the same again from another student
     for (const viewer of [cookie, await newStudent("viewer")]) {
       const doc = await page("/", viewer);
-      const entry = [...doc.querySelectorAll(".post")].find((el) => text(el.querySelector("h3")) === username);
+      const entry = [...doc.querySelectorAll(".board-post")].find((el) => el.classList.contains("board-post-own") || text(el.querySelector("h3")) === username);
       expect(entry, "the post is on the board").toBeTruthy();
       expect(exchangeOf(entry)).toEqual({
         giving: [classLabel(CLASSES[0])],
         lookingFor: [classLabel(CLASSES[2]), classLabel(CLASSES[3])],
         givingFirst: true,
       });
-      expect(text(entry)).toContain("Clashes with my lab.");
+      // your own entry carries no message: it sits above it, in the same panel
+      expect(text(entry?.closest(".your-swap-panel") ?? entry)).toContain("Clashes with my lab.");
     }
   });
 
@@ -157,7 +158,7 @@ describe("the message", () => {
     const long = `${"a".repeat(119)}b${"c".repeat(80)}`;
     await submitPost(cookie, { ...OK, message: long });
     const [entry] = await boardEntries(cookie, "your-post");
-    expect(entry.querySelector(".message")?.textContent).toBe(`${long.slice(0, 120)}…`);
+    expect(entry.closest(".your-swap-panel")?.querySelector(".message")?.textContent).toBe(`${long.slice(0, 120)}…`);
 
     const doc = await page(`/posts/${await ownPostId(cookie)}/`, cookie);
     expect(doc.querySelector(".message")?.textContent).toBe(long);
@@ -168,14 +169,14 @@ describe("the message", () => {
     const exact = "d".repeat(120);
     await submitPost(cookie, { ...OK, message: exact });
     const [entry] = await boardEntries(cookie, "your-post");
-    expect(entry.querySelector(".message")?.textContent).toBe(exact);
+    expect(entry.closest(".your-swap-panel")?.querySelector(".message")?.textContent).toBe(exact);
   });
 
   it("shows nothing for a post with no message", async () => {
     const cookie = await newStudent();
     await submitPost(cookie, OK);
     const [entry] = await boardEntries(cookie, "your-post");
-    expect(entry.querySelector(".message")).toBeNull();
+    expect(entry.closest(".your-swap-panel")?.querySelector(".message")).toBeNull();
   });
 });
 
@@ -197,7 +198,8 @@ describe("the board", () => {
 
     // your own post is pinned and not repeated in the list
     const pinned = await boardEntries(first, "your-post");
-    expect(pinned.map((el) => text(el.querySelector("h3")))).toEqual([firstName]);
+    // the pinned entry is the viewer's own, so it carries no name
+    expect(pinned.map((el) => el.classList.contains("board-post-own"))).toEqual([true]);
     const firstList = await names(first);
     expect(firstList).not.toContain(firstName);
     expect(firstList).toContain(secondName);
@@ -205,7 +207,7 @@ describe("the board", () => {
     // no open post: a Post a swap link, and no pinned entry
     const doc = await page("/", idle);
     expect(await boardEntries(idle, "your-post")).toHaveLength(0);
-    expect(doc.querySelector('#your-post ~ a[href="/posts/new/"]')?.textContent?.trim()).toBe("Post a swap");
+    expect(doc.querySelector('#your-post ~ .your-swap-panel a[href="/posts/new/"]')?.textContent?.trim()).toBe("Post a swap");
     expect(doc.querySelector('a[href="/posts/new/"]')).toBeTruthy();
     const mine = await page("/", first);
     expect(mine.querySelector('a[href="/posts/new/"]')).toBeNull();
@@ -216,7 +218,7 @@ describe("the board", () => {
     await submitPost(cookie, OK);
     const id = await ownPostId(cookie);
     const viewer = await newStudent("viewer");
-    const links = (await page("/", viewer)).querySelectorAll(`.post a[href="/posts/${id}/"]`);
+    const links = (await page("/", viewer)).querySelectorAll(`.board-post a[href="/posts/${id}/"]`);
     expect(links).toHaveLength(1);
   });
 
@@ -389,9 +391,9 @@ describe("the demo seed's posts", () => {
       // and the board shows the three, newest first, to a student with no post
       const noah = await demoCookie("noah", server.baseUrl);
       const doc = await page("/", noah, server.baseUrl);
-      const shown = [...doc.querySelectorAll("#open-posts ~ .post h3")].map((h) => text(h));
+      const shown = [...doc.querySelectorAll("#open-posts ~ .board-post h3")].map((h) => text(h));
       expect(shown).toEqual(["lena", "priya", "alex"]);
-      expect(text(doc.querySelector('#your-post ~ a[href="/posts/new/"]'))).toBe("Post a swap");
+      expect(text(doc.querySelector('#your-post ~ .your-swap-panel a[href="/posts/new/"]'))).toBe("Post a swap");
     } finally {
       await server.stop();
     }

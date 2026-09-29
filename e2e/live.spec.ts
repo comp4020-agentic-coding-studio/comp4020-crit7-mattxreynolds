@@ -33,7 +33,7 @@ async function postSwap(page: Page, leaving: string, joins: string[], message = 
 }
 
 async function ownPostPath(page: Page): Promise<string> {
-  const href = await page.locator("#your-post ~ .post").getByRole("link", { name: "View post" }).getAttribute("href");
+  const href = await page.locator("#your-post ~ .your-swap-panel .board-post").getByRole("link", { name: "View post" }).getAttribute("href");
   return new URL(href ?? "", "http://x").pathname;
 }
 
@@ -76,8 +76,8 @@ test("sam's open board and post page follow alex accepting priya's offer, with n
   await expect(sam.getByRole("status")).toHaveText("Your swap post is on the board");
   await sam.reload();
   await expect(sam.getByRole("status")).toHaveCount(0);
-  const samPost = sam.locator("#your-post ~ .post");
-  await expect(sam.locator("#open-posts ~ .post").filter({ hasText: alexName })).toContainText("1 pending offer");
+  const samPost = sam.locator("#your-post ~ .your-swap-panel .board-post");
+  await expect(sam.locator("#open-posts ~ .board-post").filter({ hasText: alexName })).toContainText("1 pending offer");
 
   const samPostPage = await samContext.newPage();
   await samPostPage.goto(postPath);
@@ -106,7 +106,7 @@ test("sam's open board and post page follow alex accepting priya's offer, with n
   await acceptFirstOffer(alex, postPath);
 
   // sam's board: alex's post has left it, and nothing else moved
-  await expect(sam.locator("#open-posts ~ .post").filter({ hasText: alexName })).toHaveCount(0);
+  await expect(sam.locator("#open-posts ~ .board-post").filter({ hasText: alexName })).toHaveCount(0);
   await expect(sam.locator("#live-announce")).toHaveText("Board updated");
   expect(await sam.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload)).toBe(true);
   expect(await sam.evaluate(() => window.scrollY)).toBe(scrollBefore);
@@ -147,17 +147,17 @@ test("the board refetches when its event stream reconnects", async ({ browser },
     release = () => route.continue();
   });
   await signUp(sam, `sam${suffix}`);
-  await expect(sam.locator("#open-posts ~ .post").filter({ hasText: alexName })).toBeVisible();
+  await expect(sam.locator("#open-posts ~ .board-post").filter({ hasText: alexName })).toBeVisible();
   await expect.poll(() => requests).toBe(2);
   await sam.evaluate(() => {
     (window as unknown as { __noReload: boolean }).__noReload = true;
   });
 
   await acceptFirstOffer(alex, postPath);
-  await expect(sam.locator("#open-posts ~ .post").filter({ hasText: alexName })).toBeVisible();
+  await expect(sam.locator("#open-posts ~ .board-post").filter({ hasText: alexName })).toBeVisible();
   await release();
 
-  await expect(sam.locator("#open-posts ~ .post").filter({ hasText: alexName })).toHaveCount(0);
+  await expect(sam.locator("#open-posts ~ .board-post").filter({ hasText: alexName })).toHaveCount(0);
   expect(await sam.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload)).toBe(true);
   await Promise.all([alexContext, priyaContext, samContext].map((c: BrowserContext) => c.close()));
 });
@@ -169,7 +169,7 @@ test("focus stays on a control whose label the refresh changes", async ({ browse
   await signUp(alex, `alexf${suffix}`);
   await postSwap(alex, "Mon 14:00–15:30", ["Wed 09:00–10:30"]);
   const postPath = await ownPostPath(alex);
-  const count = alex.locator("#your-post ~ .post .offer-count").getByRole("link");
+  const count = alex.locator("#your-post ~ .your-swap-panel .board-post .offer-count").getByRole("link");
   await expect(count).toHaveText("0 pending offers");
   await count.focus();
 
@@ -196,14 +196,14 @@ test("the board and the post page are correct on reload with JavaScript off", as
   const watcherContext = await newContext(browser, testInfo, { javaScriptEnabled: false });
   const watcher = await watcherContext.newPage();
   await signUp(watcher, `nojswatch${suffix}`);
-  const entry = watcher.locator("#open-posts ~ .post").filter({ hasText: `nojsowner${suffix}` });
+  const entry = watcher.locator("#open-posts ~ .board-post").filter({ hasText: `nojsowner${suffix}` });
   await expect(entry).toBeVisible();
   await watcher.goto(postPath);
   await expect(watcher.getByRole("button", { name: "Offer to swap" })).toBeVisible();
 
   // nothing updates by itself...
   await owner.getByRole("button", { name: "Withdraw" }).click();
-  await expect(owner.locator("#your-post ~ .post")).toHaveCount(0);
+  await expect(owner.locator("#your-post ~ .your-swap-panel .board-post")).toHaveCount(0);
   await expect(watcher.getByRole("button", { name: "Offer to swap" })).toBeVisible();
 
   // ...and a reload is correct
@@ -211,6 +211,6 @@ test("the board and the post page are correct on reload with JavaScript off", as
   await expect(watcher.getByText("This swap post was withdrawn")).toBeVisible();
   await expect(watcher.getByRole("button", { name: "Offer to swap" })).toHaveCount(0);
   await watcher.goto("/");
-  await expect(watcher.locator("#open-posts ~ .post").filter({ hasText: `nojsowner${suffix}` })).toHaveCount(0);
+  await expect(watcher.locator("#open-posts ~ .board-post").filter({ hasText: `nojsowner${suffix}` })).toHaveCount(0);
   await Promise.all([ownerContext, watcherContext].map((c: BrowserContext) => c.close()));
 });

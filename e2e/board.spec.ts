@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { screenshotPath } from "./evidence";
 import { boxes } from "./geometry";
+import { logOut } from "./nav";
 
 // Issue #18: post a swap from the board, land back on it with the notice,
 // reload and still see it — at both viewports, for the handoff screenshots.
@@ -35,17 +36,18 @@ test("post a swap, reload the board, and it is still there", async ({ page }, te
 
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("status")).toHaveText("Your swap post is on the board");
-  const mine = page.locator("#your-post ~ .post");
-  await expect(mine).toContainText(username);
-  await expect(mine).toContainText("Clashes with my lab.");
+  // your own entry carries no name (it sits under "Your swap") and its message sits above it in the same panel
+  const panel = page.locator("#your-post ~ .your-swap-panel");
+  await expect(panel.locator(".board-post")).toBeVisible();
+  await expect(panel).toContainText("Clashes with my lab.");
 
   await page.reload();
   await expect(page.getByRole("status")).toHaveCount(0);
-  await expect(page.locator("#your-post ~ .post")).toContainText("Clashes with my lab.");
+  await expect(page.locator("#your-post ~ .your-swap-panel")).toContainText("Clashes with my lab.");
   await expect(page.getByRole("link", { name: "Post a swap" })).toHaveCount(0);
   await page.screenshot({ path: screenshotPath(testInfo, "board"), fullPage: true });
 
-  await page.locator("#your-post ~ .post").getByRole("link", { name: "View post" }).click();
+  await page.locator("#your-post ~ .your-swap-panel .board-post").getByRole("link", { name: "View post" }).click();
   await expect(page.getByRole("heading", { name: `Swap post by ${username}` })).toBeVisible();
   await expect(page.getByText("Clashes with my lab.")).toBeVisible();
 });
@@ -64,9 +66,9 @@ test("edit a swap post, then withdraw it", async ({ page }, testInfo) => {
   await page.getByRole("group", { name: "Classes you would join" }).getByRole("checkbox", { name: "Wed 09:00–10:30" }).check();
   await page.getByLabel(/Message/).fill("Clashes with my lab.");
   await page.getByRole("button", { name: "Post swap" }).click();
-  await expect(page.locator("#your-post ~ .post")).not.toContainText("Edited");
+  await expect(page.locator("#your-post ~ .your-swap-panel .board-post")).not.toContainText(/edited/i);
 
-  await page.locator("#your-post ~ .post").getByRole("link", { name: "Edit" }).click();
+  await page.locator("#your-post ~ .your-swap-panel .board-post").getByRole("link", { name: "Edit" }).click();
   await expect(page).toHaveURL(/\/posts\/\d+\/edit\/$/);
   await expect(page.getByRole("radio", { name: "Mon 14:00–15:30" })).toBeChecked();
   await expect(page.getByLabel(/Message/)).toHaveValue("Clashes with my lab.");
@@ -79,9 +81,10 @@ test("edit a swap post, then withdraw it", async ({ page }, testInfo) => {
 
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("status")).toHaveText("Changes saved");
-  const mine = page.locator("#your-post ~ .post");
-  await expect(mine).toContainText("Now it is my exam.");
-  await expect(mine).toContainText("Edited");
+  const mine = page.locator("#your-post ~ .your-swap-panel .board-post");
+  await expect(page.locator("#your-post ~ .your-swap-panel")).toContainText("Now it is my exam.");
+  // the entry's posted and edited times are read out, not drawn
+  await expect(mine).toContainText(/edited/i);
   await page.reload();
   await expect(page.getByRole("status")).toHaveCount(0);
 
@@ -96,7 +99,7 @@ test("edit a swap post, then withdraw it", async ({ page }, testInfo) => {
   await page.screenshot({ path: screenshotPath(testInfo, "withdrawn"), fullPage: true });
 
   await page.getByRole("link", { name: "Back to the board" }).click();
-  await expect(page.locator("#your-post ~ .post")).toHaveCount(0);
+  await expect(page.locator("#your-post ~ .your-swap-panel .board-post")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Post a swap" })).toBeVisible();
 });
 
@@ -122,8 +125,8 @@ test("the board is a split on a wide screen and stacks on a phone", async ({ pag
   await join.getByRole("checkbox", { name: "Wed 09:00–10:30" }).check();
   await join.getByRole("checkbox", { name: "Wed 10:30–12:00" }).check();
   await page.getByRole("button", { name: "Post swap" }).click();
-  const ownerPost = (await page.locator("#your-post ~ .post").getByRole("link", { name: "View post" }).getAttribute("href")) ?? "";
-  await page.getByRole("button", { name: "Log out" }).click();
+  const ownerPost = (await page.locator("#your-post ~ .your-swap-panel .board-post").getByRole("link", { name: "View post" }).getAttribute("href")) ?? "";
+  await logOut(page);
 
   // the viewer has a post of their own and one offer made: every section shows
   await signUp(viewer);
@@ -142,7 +145,7 @@ test("the board is a split on a wide screen and stacks on a phone", async ({ pag
   await expect(async () => {
     const { yourPost, yourPostEntry, yourOffers, openPosts, side, main } = await boxes(page, {
       yourPost: "#your-post",
-      yourPostEntry: "#your-post ~ .post",
+      yourPostEntry: "#your-post ~ .your-swap-panel .board-post",
       yourOffers: "#your-offers",
       openPosts: "#open-posts",
       side: ".board-split > .side-column",
@@ -169,10 +172,10 @@ test("the board is a split on a wide screen and stacks on a phone", async ({ pag
   expect(scroll).toBeLessThanOrEqual(width);
 
   // the exchange row opens every entry, GIVING before LOOKING FOR
-  const row = page.locator("#open-posts ~ .post").filter({ hasText: owner }).locator(".exchange");
-  await expect(row.locator(".giving")).toContainText("Mon 14:00–15:30");
-  await expect(row.locator(".looking-for")).toContainText("Wed 09:00–10:30, Wed 10:30–12:00");
-  const { g, l } = await boxes(page, { g: ".exchange .giving", l: ".exchange .looking-for" }, { selector: "#open-posts ~ .post", hasText: owner });
+  const row = page.locator("#open-posts ~ .board-post").filter({ hasText: owner }).locator(".swap-exchange");
+  await expect(row.locator(".swap-giving")).toContainText("Mon 14:00–15:30");
+  await expect(row.locator(".swap-looking")).toContainText(/Wed 09:00–10:30\s*Wed 10:30–12:00/);
+  const { g, l } = await boxes(page, { g: ".swap-exchange .swap-giving", l: ".swap-exchange .swap-looking" }, { selector: "#open-posts ~ .board-post", hasText: owner });
   expect(g.x < l.x || g.y < l.y).toBe(true);
 
   await page.screenshot({ path: screenshotPath(testInfo, "board-split"), fullPage: true });
@@ -198,7 +201,7 @@ test("new post, edit post and About fit the board's look at both sizes", async (
   const { column, card, actions } = await boxes(page, { column: ".form-page", card: "#post-form", actions: ".form-actions" });
   expect(card.width, "the card fills the column").toBeGreaterThan(column.width - 2);
   expect(actions.y, "the button sits inside the card").toBeLessThan(card.y + card.height);
-  if (testInfo.project.name === "desktop") expect(column.width, "a reading column, not the page").toBeLessThanOrEqual(641);
+  if (testInfo.project.name === "desktop") expect(column.width, "the board's own width, not the whole screen").toBeLessThanOrEqual(1121);
   expect(await fits(), "new post scrolls sideways").toBe(true);
   await page.screenshot({ path: screenshotPath(testInfo, "post-form"), fullPage: true });
 
@@ -207,14 +210,14 @@ test("new post, edit post and About fit the board's look at both sizes", async (
   await page.getByRole("button", { name: "Post swap" }).click();
   await expect(page).toHaveURL("/");
 
-  await page.locator("#your-post ~ .post").getByRole("link", { name: "Edit" }).click();
+  await page.locator("#your-post ~ .your-swap-panel .board-post").getByRole("link", { name: "Edit" }).click();
   await expect(page.getByRole("heading", { name: "Edit your swap post" })).toBeVisible();
   await boxes(page, { card: ".form-page #post-form" });
   expect(await fits(), "edit post scrolls sideways").toBe(true);
 
   await page.goto("/readme/");
   const { article } = await boxes(page, { article: ".readme-page" });
-  if (testInfo.project.name === "desktop") expect(article.width, "a reading column").toBeLessThanOrEqual(705);
+  if (testInfo.project.name === "desktop") expect(article.width, "a reading column").toBeLessThanOrEqual(865);
   expect(await fits(), "About scrolls sideways").toBe(true);
   await page.screenshot({ path: screenshotPath(testInfo, "about"), fullPage: true });
 });

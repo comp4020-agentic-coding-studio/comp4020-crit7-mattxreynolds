@@ -271,7 +271,7 @@ describe("the post page's three views (0023)", () => {
 
 describe("pending-offer counts", () => {
   const entry = async (cookie: string, section: "your-post" | "open-posts", username: string) =>
-    [...(await page("/", cookie)).querySelectorAll(`#${section} ~ .post`)].find((el) => text(el.querySelector("h3")) === username);
+    [...(await page("/", cookie)).querySelectorAll(`#${section} ~ .board-post, #${section} ~ .your-swap-panel .board-post`)].find((el) => el.classList.contains("board-post-own") || text(el.querySelector("h3")) === username);
 
   it("count only pending offers, on the board, the pinned post and the post page", async () => {
     const p = await poster();
@@ -443,8 +443,8 @@ describe("the demo seed's offers (0038)", () => {
       // what a tutor sees: alex's board and post page, sam's and noah's views
       const alex = await demoCookie("alex", server.baseUrl);
       const board = await page("/", alex, server.baseUrl);
-      expect(text(board.querySelector("#your-post ~ .post .offer-count"))).toBe("2 pending offers");
-      const alexPost = board.querySelector('#your-post ~ .post a[href^="/posts/"]')?.getAttribute("href") ?? "";
+      expect(text(board.querySelector("#your-post ~ .your-swap-panel .board-post .offer-count"))).toBe("2 pending offers");
+      const alexPost = board.querySelector('#your-post ~ .your-swap-panel .board-post a[href^="/posts/"]')?.getAttribute("href") ?? "";
       const offers = [...(await page(alexPost, alex, server.baseUrl)).querySelectorAll(".offers li .offer-text")].map((li) => text(li));
       expect(offers).toEqual([
         `priya would leave ${classLabel(CLASSES[2])}`,
@@ -452,7 +452,7 @@ describe("the demo seed's offers (0038)", () => {
       ]);
 
       const noah = await demoCookie("noah", server.baseUrl);
-      const counts = [...(await page("/", noah, server.baseUrl)).querySelectorAll("#open-posts ~ .post")].map((el) => [
+      const counts = [...(await page("/", noah, server.baseUrl)).querySelectorAll("#open-posts ~ .board-post")].map((el) => [
         text(el.querySelector("h3")),
         text(el.querySelector(".offer-count")),
       ]);
@@ -494,7 +494,7 @@ describe("the demo seed's offers (0038)", () => {
 
       // noah offers on lena's post: noah's line and lena's both move
       const noah = await demoCookie("noah", server.baseUrl);
-      const lenaPost = (await page("/", noah, server.baseUrl)).querySelector('#open-posts ~ .post a[href^="/posts/"]')?.getAttribute("href") ?? "";
+      const lenaPost = (await page("/", noah, server.baseUrl)).querySelector('#open-posts ~ .board-post a[href^="/posts/"]')?.getAttribute("href") ?? "";
       const res = await submitOffer(noah, lenaPost.match(/\d+/)?.[0] ?? "", { class: CLASSES[4].id }, server.baseUrl);
       expect(res.status).toBe(303);
       expect(await lines()).toMatchObject({ lena: "1 offer to answer · 1 pending offer", noah: "1 pending offer" });

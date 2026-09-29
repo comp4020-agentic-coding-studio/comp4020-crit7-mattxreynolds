@@ -29,7 +29,7 @@ export async function newStudent(prefix = "poster", origin = baseUrl): Promise<s
 
 export async function usernameOf(cookie: string, origin = baseUrl): Promise<string> {
   const doc = await page("/", cookie, origin);
-  return doc.querySelector("main strong")?.textContent ?? "";
+  return doc.querySelector(".nav-username")?.textContent?.trim() ?? "";
 }
 
 export async function demoCookie(username: string, origin = baseUrl): Promise<string> {
@@ -74,7 +74,7 @@ export const text = (el: Element | null | undefined): string => el?.textContent?
 /** The id of the student's own open post, read from "Your post" on the board. */
 export async function ownPostId(cookie: string, origin = baseUrl): Promise<number | null> {
   const doc = await page("/", cookie, origin);
-  const href = doc.querySelector('#your-post ~ .post a[href^="/posts/"]')?.getAttribute("href");
+  const href = doc.querySelector('#your-post ~ .your-swap-panel .board-post a[href^="/posts/"]')?.getAttribute("href");
   const id = href?.match(/^\/posts\/(\d+)\/$/)?.[1];
   return id ? Number(id) : null;
 }
@@ -184,11 +184,11 @@ export async function offerIdsOn(cookie: string, postId: number | string, origin
  *  the LOOKING FOR class labels in the order shown, and whether GIVING comes
  *  first in the markup. Null when the entry has no row. */
 export function exchangeOf(entry: Element | null | undefined): { giving: string[]; lookingFor: string[]; givingFirst: boolean } | null {
-  const row = entry?.querySelector(".exchange");
-  const giving = row?.querySelector(".giving");
-  const looking = row?.querySelector(".looking-for");
+  const row = entry?.querySelector(".swap-exchange");
+  const giving = row?.querySelector(".swap-giving");
+  const looking = row?.querySelector(".swap-looking");
   if (!row || !giving || !looking) return null;
-  const labels = (el: Element) => [...el.querySelectorAll(".class")].map((c) => text(c));
+  const labels = (el: Element) => [...el.querySelectorAll(".class, li")].map((c) => text(c));
   return {
     giving: labels(giving),
     lookingFor: labels(looking),

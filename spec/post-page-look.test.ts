@@ -64,27 +64,27 @@ beforeAll(async () => {
 });
 
 describe("the header (0057)", () => {
-  it("keeps the heading, then opens with the exchange row: GIVING the leaving class, LOOKING FOR every join class in order", async () => {
+  it("keeps the heading, then the status and the exchange row: GIVING the leaving class, LOOKING FOR every join class in order", async () => {
     for (const cookie of [open.cookie, bystander]) {
       const doc = await page(open.path, cookie);
       expect(text(doc.querySelector("main h1"))).toBe(`Swap post by ${open.username}`);
       const head = header(doc);
       expect(head).toBeTruthy();
-      expect(head?.firstElementChild?.matches(".exchange.large")).toBe(true);
+      expect(head?.querySelector(":scope > .swap-exchange.large")).toBeTruthy();
       expect(exchangeOf(head)).toEqual({
         giving: [label(MON_14)],
         lookingFor: [label(WED_9), label(WED_1030), label(WED_14)],
         givingFirst: true,
       });
-      expect(text(head?.querySelector(".giving .exchange-label")).toUpperCase()).toBe("GIVING");
-      expect(text(head?.querySelector(".looking-for .exchange-label")).toUpperCase()).toBe("LOOKING FOR");
+      expect(text(head?.querySelector(".swap-giving .exchange-label")).toUpperCase()).toBe("GIVING");
+      expect(text(head?.querySelector(".swap-looking .exchange-label")).toUpperCase()).toBe("LOOKING FOR");
     }
   });
 
   it("follows it with the status, the message whole, the times and the count, all before the comments", async () => {
     const doc = await page(open.path, bystander);
     const head = header(doc);
-    const parts = [".exchange", ".post-status", ".message", ".post-facts time", ".offer-count"].map((sel) => head?.querySelector(sel));
+    const parts = [".post-status", ".swap-exchange", ".message", ".post-facts time", ".offer-count"].map((sel) => head?.querySelector(sel));
     expect(parts.every(Boolean)).toBe(true);
     for (let i = 1; i < parts.length; i++) expect(before(parts[i - 1], parts[i]), `part ${i}`).toBe(true);
     expect(text(head?.querySelector(".message"))).toBe(MESSAGE);
@@ -97,7 +97,11 @@ describe("the header (0057)", () => {
     const doc = await page(open.path, bystander);
     expect(text(doc.querySelector("main"))).not.toMatch(/Leaving:?\s|Would join|\bPoster\b(?!\s*tag)/);
     expect([...doc.querySelectorAll("dt")].map((dt) => text(dt))).toEqual(["Posted"]);
-    expect(doc.querySelector("[hidden], .visually-hidden, [aria-hidden=true]:not(.exchange-arrow)")).toBeNull();
+    // decoration (the arrows, the icons, the back link's arrow) is hidden from readers; a copy of the details would be text
+    const hidden = [...doc.querySelectorAll("main [hidden], main .visually-hidden, main [aria-hidden=true]")].filter(
+      (el) => !el.matches(".swap-arrow, svg") && !el.closest(".post-back"),
+    );
+    expect(hidden.map((el) => el.outerHTML)).toEqual([]);
   });
 
   it("puts the poster's Message link in the header for another student, and none for the poster", async () => {
@@ -130,11 +134,12 @@ describe("the split (0057)", () => {
     expect(grid?.querySelector(":scope > form.comment-form")).toBeTruthy();
   });
 
-  it("holds the offer form, Your offer, the offers and Edit / Withdraw in the side column, and never the comments", async () => {
+  it("holds the offer form, Your offer and the offers in the side column, Edit / Withdraw in the header, and never the comments", async () => {
     const side = (doc: Document) => doc.querySelector(".side-column");
     expect(side(await page(open.path, offerer))?.querySelector('form[action$="/offers"] button.primary')).toBeTruthy();
-    expect(side(await page(open.path, open.cookie))?.querySelector('a[href$="/edit/"]')).toBeTruthy();
-    expect(side(await page(open.path, open.cookie))?.querySelector('form[action$="/withdraw"]')).toBeTruthy();
+    const actions = (await page(open.path, open.cookie)).querySelector("#post-live .post-header > .post-header-actions");
+    expect(actions?.querySelector('a[href$="/edit/"]')).toBeTruthy();
+    expect(actions?.querySelector('form[action$="/withdraw"]')).toBeTruthy();
     for (const cookie of [offerer, open.cookie]) expect(side(await page(open.path, cookie))?.querySelector(".comments, #comments")).toBeNull();
   });
 });
@@ -142,11 +147,12 @@ describe("the split (0057)", () => {
 describe("the attention marker on the post page (0058)", () => {
   it("is on the poster's count, Offers heading and list at 1 or more pending offers, and on nothing else", async () => {
     const own = async () => page(busy.path, busy.cookie);
-    // at 0: the count is there and neutral, and no Offers list
+    // at 0: the count is there and neutral, and the Offers panel says there are none instead of listing any
     let doc = await own();
     expect(text(doc.querySelector(".offer-count"))).toBe("0 pending offers");
     expect(doc.querySelector("main [data-attention]")).toBeNull();
-    expect(doc.querySelector("#offers")).toBeNull();
+    expect(doc.querySelector("ul.offers")).toBeNull();
+    expect(text(doc.querySelector("#offers ~ .no-offers"))).toBe("No offers yet.");
 
     expect((await offer(offerer, busy)).status).toBe(303);
     doc = await own();
@@ -199,7 +205,7 @@ describe("the refetch fragment (0044)", () => {
       expect(res.status).toBe(200);
       const html = await res.text();
       const doc = new JSDOM(`<body>${html}</body>`).window.document;
-      expect(doc.querySelector(".post-header .exchange.large")).toBeTruthy();
+      expect(doc.querySelector(".post-header .swap-exchange.large")).toBeTruthy();
       expect(doc.querySelector(".side-column")).toBeTruthy();
       expect(doc.querySelector("#comments")).toBeTruthy();
       expect(doc.querySelector('form[action$="/comments"], #comment-body, textarea, .comment-form')).toBeNull();
@@ -239,8 +245,9 @@ describe("withdrawn and swapped posts (0020, 0024)", () => {
         expect(text(head?.querySelector(".post-status")), status).toBe(status);
         expect(text(head), status).toContain(sentence);
         expect(head?.querySelector(".offer-count"), status).toBeNull();
-        // the read-only page: no side column, no comment box, no controls
-        expect(doc.querySelector(".side-column"), status).toBeNull();
+        // the read-only page: no offer panel for anyone but the poster (whose says there are none), no comment box, no controls
+        if (cookie === bystander) expect(doc.querySelector(".side-column"), status).toBeNull();
+        else expect(doc.querySelector(".side-column ul.offers"), status).toBeNull();
         expect(doc.querySelector("form.comment-form"), status).toBeNull();
         expect(doc.querySelector("main [data-attention]"), status).toBeNull();
         expect(doc.querySelectorAll("main .post-split form, main .post-split a.button"), status).toHaveLength(0);

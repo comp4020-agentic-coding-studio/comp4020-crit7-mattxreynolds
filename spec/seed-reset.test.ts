@@ -276,7 +276,7 @@ describe("the board after a reset", () => {
     try {
       const noah = await demoCookie("noah", server.baseUrl);
       const doc = await page("/", noah, server.baseUrl);
-      const entries = [...doc.querySelectorAll("#open-posts ~ .post")].map((el) => ({
+      const entries = [...doc.querySelectorAll("#open-posts ~ .board-post")].map((el) => ({
         poster: text(el.querySelector("h3")),
         offers: text(el.querySelector(".offer-count")),
         comments: text(el.querySelector(".comment-count")),
@@ -380,5 +380,5 @@ describe("no route or page resets anything", () => {
 });
 
 function boardText(doc: Document): string[] {
-  return [...doc.querySelectorAll(".post")].map((el) => text(el));
+  return [...doc.querySelectorAll(".board-post")].map((el) => text(el));
 }

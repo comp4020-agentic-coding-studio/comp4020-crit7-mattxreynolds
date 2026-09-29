@@ -40,7 +40,7 @@ test("a comment from another student appears live and leaves a half-typed commen
   const alex = await alexContext.newPage();
   await signUp(alex, `alexc${suffix}`);
   await postSwap(alex, "Clashes with my lab.");
-  const href = await alex.locator("#your-post ~ .post").getByRole("link", { name: "View post" }).getAttribute("href");
+  const href = await alex.locator("#your-post ~ .your-swap-panel .board-post").getByRole("link", { name: "View post" }).getAttribute("href");
   const postPath = new URL(href ?? "", "http://x").pathname;
 
   const samContext = await newContext(browser, testInfo);
@@ -90,7 +90,7 @@ test("a comment from another student appears live and leaves a half-typed commen
 
   // the board says how many are left, deleted ones not counted
   await alex.goto("/");
-  await expect(alex.locator("#your-post ~ .post .comment-count")).toHaveText("1 comment");
+  await expect(alex.locator("#your-post ~ .your-swap-panel .board-post .comment-count")).toHaveText("1 comment");
 
   await alex.goto(postPath);
   await comment(alex, "Second thought: any class after 10 works.");
@@ -105,7 +105,7 @@ test("a withdrawn post's page keeps its comments and loses the box", async ({ br
   const page = await context.newPage();
   await signUp(page, `alexw${suffix}`);
   await postSwap(page, "");
-  await page.locator("#your-post ~ .post").getByRole("link", { name: "View post" }).click();
+  await page.locator("#your-post ~ .your-swap-panel .board-post").getByRole("link", { name: "View post" }).click();
   await comment(page, "Never mind, sorted it out.");
   await expect(page.locator(".comment")).toHaveCount(1);
   await page.getByRole("button", { name: "Withdraw" }).click();

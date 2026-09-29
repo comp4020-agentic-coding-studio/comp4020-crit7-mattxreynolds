@@ -35,8 +35,10 @@ async function makeOffer() {
   offered = true;
 }
 
-const entries = (doc: Document) => [...doc.querySelectorAll(".post")];
-const entryOf = (doc: Document, username: string) => entries(doc).find((el) => text(el.querySelector("h3")) === username);
+const entries = (doc: Document) => [...doc.querySelectorAll(".board-post")];
+// the viewer's own entry carries no name (it sits under "Your swap"), so it stands for whoever they are
+const entryOf = (doc: Document, username: string) =>
+  entries(doc).find((el) => el.classList.contains("board-post-own") || text(el.querySelector("h3")) === username);
 
 describe("the exchange row", () => {
   it("opens every entry, own and others: GIVING the leaving class, then LOOKING FOR every join class in order", async () => {
@@ -45,7 +47,7 @@ describe("the exchange row", () => {
       [viewer, "open-posts"],
     ] as const) {
       const doc = await page("/", cookie);
-      const entry = [...doc.querySelectorAll(`#${section} ~ .post`)].find((el) => text(el.querySelector("h3")) === owner.username);
+      const entry = [...doc.querySelectorAll(`#${section} ~ .board-post, #${section} ~ .your-swap-panel .board-post`)].find((el) => el.classList.contains("board-post-own") || text(el.querySelector("h3")) === owner.username);
       expect(entry, section).toBeTruthy();
       expect(exchangeOf(entry)).toEqual({
         giving: [label(MON_14)],
@@ -67,17 +69,17 @@ describe("the exchange row", () => {
 
   it("is the first thing after the poster's name, worded GIVING and LOOKING FOR, with no old prefixes", async () => {
     const entry = entryOf(await page("/", viewer), owner.username);
-    const row = entry?.querySelector(".exchange");
+    const row = entry?.querySelector(".swap-exchange");
     expect(entry?.querySelector("h3")?.nextElementSibling).toBe(row);
-    expect(text(row?.querySelector(".giving .exchange-label")).toUpperCase()).toBe("GIVING");
-    expect(text(row?.querySelector(".looking-for .exchange-label")).toUpperCase()).toBe("LOOKING FOR");
+    expect(text(row?.querySelector(".swap-giving .exchange-label")).toUpperCase()).toBe("GIVING");
+    expect(text(row?.querySelector(".swap-looking .exchange-label")).toUpperCase()).toBe("LOOKING FOR");
     expect(text(entry)).not.toMatch(/Leaving:|Would join:/);
   });
 
   it("still leaves the rest of the entry as 0047 lists it", async () => {
     const entry = entryOf(await page("/", viewer), owner.username);
     expect(text(entry?.querySelector(".message"))).toBe(`${"y".repeat(120)}…`);
-    expect(text(entry?.querySelector(".meta time"))).not.toBe("");
+    expect(text(entry?.querySelector("time"))).not.toBe("");
     expect(entry?.querySelector('a[href^="/posts/"]')).not.toBeNull();
     expect(text(entry?.querySelector(".comment-count"))).toBe("0 comments");
     expect(text(entry?.querySelector(".offer-count"))).toMatch(/^\d+ pending offers?$/);
@@ -103,7 +105,7 @@ describe("the attention marker on a pending-offer count (0058)", () => {
       expect(count?.hasAttribute("data-attention")).toBe(false);
     }
     // the seeded board has pending offers on other people's posts too
-    const others = [...(await page("/", await demoCookie("noah"))).querySelectorAll("#open-posts ~ .post .offer-count")];
+    const others = [...(await page("/", await demoCookie("noah"))).querySelectorAll("#open-posts ~ .board-post .offer-count")];
     expect(others.some((c) => !text(c).startsWith("0 "))).toBe(true);
     for (const count of others) expect(count.hasAttribute("data-attention")).toBe(false);
   });
@@ -111,7 +113,7 @@ describe("the attention marker on a pending-offer count (0058)", () => {
   it("marks nothing else on the board", async () => {
     await makeOffer();
     const marked = [...(await page("/", owner.cookie)).querySelectorAll("main [data-attention]")];
-    expect(marked.map((el) => el.className)).toEqual(["offer-count"]);
+    expect(marked.map((el) => el.className)).toEqual(["board-count offer-count"]);
   });
 });
 
@@ -132,7 +134,7 @@ describe("the split (0054)", () => {
   it("has no hero: the heading is the board's first content", async () => {
     const doc = await page("/", viewer);
     expect(doc.querySelector(".hero")).toBeNull();
-    expect(doc.querySelector("main h1")?.textContent).toBe("Board");
+    expect(doc.querySelector("main h1")?.textContent).toBe("Agentic Coding Studio");
   });
 });
 
