@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototype: board structure (#28)</title>
+<style>
+  :root {
+    --navy: #0b1f3a; --navy-2: #12305a; --cyan: #22d3ee; --cyan-ink: #04323b;
+    --coral: #ff6b57; --paper: #f3f6fb; --block: #dce7f5; --block-ink: #0b1f3a;
+    --line: #c5d3e6; --ink: #10233f; --muted: #52627a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.4 system-ui, sans-serif; color: var(--ink); background: #8794a8; padding-bottom: 88px; }
+  /* the page frame: 'Mobile' clamps it to 390px, and container queries (not media queries) drive the layouts so the toggle is honest */
+  #frame { margin: 0 auto; background: var(--paper); container-type: inline-size; min-height: 100vh; }
+  #frame.mobile { max-width: 390px; box-shadow: 0 0 0 2px #000; }
+
+  /* ---- shell (identical in all variants) ---- */
+  header.shell { background: var(--navy); color: #fff; display: flex; gap: 12px; align-items: center; padding: 12px 20px; flex-wrap: wrap; }
+  header.shell .wordmark { font-weight: 800; letter-spacing: .04em; text-transform: uppercase; font-size: 18px; margin-right: auto; }
+  header.shell .wordmark span { color: var(--cyan); }
+  header.shell a { color: #fff; text-decoration: none; font-size: 14px; }
+  header.shell .msgs b { background: var(--coral); color: #000; border-radius: 10px; padding: 0 7px; margin-left: 2px; }
+  main { padding: 20px; }
+  footer.unofficial { color: var(--muted); font-size: 13px; padding: 20px; border-top: 1px solid var(--line); }
+  h2 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 24px 0 8px; }
+  h2:first-child { margin-top: 0; }
+  #refetch.show { outline: 2px dashed var(--coral); outline-offset: 4px; position: relative; }
+  #refetch.show::before { content: "one refetched fragment (0042)"; position: absolute; top: -22px; right: 0; font-size: 11px; color: var(--coral); background: var(--paper); padding: 0 4px; }
+
+  /* ---- shared atoms ---- */
+  .block { display: inline-flex; flex-direction: column; background: var(--block); color: var(--block-ink); border-left: 4px solid var(--navy); padding: 3px 8px; border-radius: 2px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .block small { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .block b { font-size: 14px; }
+  .block.give { background: var(--navy); color: #fff; border-left-color: var(--coral); }
+  .block.give small { color: #b8c7de; }
+  .label { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .arrow { font-weight: 800; color: var(--navy-2); font-size: 20px; }
+  .who { font-weight: 700; }
+  .msg { color: var(--muted); font-style: italic; }
+  .meta { font-size: 12px; color: var(--muted); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; background: var(--block); }
+  .badge.attn { background: var(--coral); color: #000; }
+  .btn { font: inherit; font-size: 14px; border: 0; border-radius: 4px; padding: 6px 12px; background: var(--cyan); color: var(--cyan-ink); font-weight: 700; }
+  .btn.ghost { background: transparent; border: 1px solid var(--navy-2); color: var(--navy-2); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .own { border-color: var(--cyan) !important; box-shadow: inset 4px 0 0 var(--cyan); }
+  .offer-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--line); }
+
+  /* ---- variant 1: dense rows; cards under 640px ---- */
+  .rows .row { display: grid; grid-template-columns: 110px 130px 24px minmax(0,1fr) 160px 190px; gap: 8px 14px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 8px 12px; margin-bottom: 6px; }
+  .rows .head { background: none; border: 0; padding: 0 12px; margin: 0 0 2px; }
+  .rows .msgrow { grid-column: 2 / 6; margin-top: -4px; }
+  .rows .counts { font-size: 13px; }
+  .rows .act { display: flex; gap: 6px; justify-content: flex-end; }
+  @container (max-width: 700px) {
+    .rows .head { display: none; }
+    .rows .row { grid-template-columns: 1fr auto; padding: 12px; }
+    .rows .who { grid-column: 1; }
+    .rows .time { grid-column: 2; text-align: right; }
+    .rows .give-col, .rows .join-col { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .rows .give-col::before { content: "GIVING"; }
+    .rows .join-col::before { content: "LOOKING FOR"; }
+    .rows .give-col::before, .rows .join-col::before { font-size: 10px; letter-spacing: .14em; font-weight: 700; color: var(--muted); width: 84px; }
+    .rows .arrow { display: none; }
+    .rows .msgrow { grid-column: 1 / -1; margin: 0; }
+    .rows .counts { grid-column: 1; }
+    .rows .act { grid-column: 2; }
+  }
+
+  /* ---- variant 2: cards at every width ---- */
+  .cards .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+  .cards .card { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 10px; align-content: start; }
+  .cards .top { display: flex; justify-content: space-between; align-items: baseline; }
+  .cards .swapline { display: grid; grid-template-columns: 1fr 24px 1.3fr; gap: 8px; align-items: start; }
+  .cards .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  @container (max-width: 420px) {
+    .cards .grid { grid-template-columns: 1fr; }
+    .cards .swapline { grid-template-columns: 1fr; }
+    .cards .swapline .arrow { transform: rotate(90deg); justify-self: start; margin-left: 20px; }
+  }
+
+  /* ---- variant 3: split ---- */
+  .split .cols { display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start; }
+  .split .side { position: sticky; top: 12px; }
+  .split .side .card { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 10px; }
+  .split .stack { display: grid; gap: 8px; }
+  .split .swapline { display: grid; gap: 6px; }
+  .split .swapline .arrow { transform: rotate(90deg); justify-self: start; margin-left: 20px; }
+  .split .open .row { display: grid; grid-template-columns: 90px 130px 24px minmax(0,1fr) 160px; gap: 8px 14px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 8px 12px; margin-bottom: 6px; }
+  .split .open .msgrow { grid-column: 2 / -1; margin-top: -4px; }
+  @container (max-width: 900px) {
+    .split .cols { grid-template-columns: 1fr; }
+    .split .side { position: static; }
+    .split .open .row { grid-template-columns: 1fr auto; }
+    .split .open .give-col, .split .open .join-col { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .split .open .give-col::before { content: "GIVING"; } .split .open .join-col::before { content: "LOOKING FOR"; }
+    .split .open .give-col::before, .split .open .join-col::before { font-size: 10px; letter-spacing: .14em; font-weight: 700; color: var(--muted); width: 84px; }
+    .split .open .arrow { display: none; }
+    .split .open .msgrow { grid-column: 1 / -1; margin: 0; }
+  }
+
+  /* ---- floating bar ---- */
+  #bar { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); background: #000; color: #fff; border-radius: 10px; padding: 8px 10px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: center; font-size: 13px; z-index: 9; max-width: calc(100vw - 16px); box-shadow: 0 4px 20px #0008; }
+  #bar .grp { display: flex; gap: 4px; align-items: center; }
+  @media (max-width: 600px) { #bar { position: static; transform: none; margin: 12px 8px; } body { padding-bottom: 0; } }
+  #bar button { font: inherit; background: #333; color: #fff; border: 0; border-radius: 5px; padding: 4px 9px; cursor: pointer; }
+  #bar button.on { background: var(--cyan); color: #000; font-weight: 700; }
+  #q { background: #fff8d6; border-bottom: 2px solid #d9b800; padding: 8px 16px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="q"><b>Question (#28):</b> which responsive structure best expresses the exchange board with the real seed data: <b>1</b> dense rows that become cards on mobile, <b>2</b> cards at every width, or <b>3</b> a split with your post beside the open board? Look at each at Desktop and Mobile, as alex and as lena.</div>
+<div id="frame"></div>
+<div id="bar"></div>
+
+<script>
+// ===== pure model (no DOM). Seed data copied from src/lib/seed.ts and src/lib/classes.ts; nothing invented except the marked stress case. =====
+const CLASSES = {
+  shitao: { day: "Mon", start: "14:00", end: "15:30" }, bada: { day: "Mon", start: "15:30", end: "17:00" },
+  baishi: { day: "Wed", start: "09:00", end: "10:30" }, dachi: { day: "Wed", start: "10:30", end: "12:00" },
+  yunlin: { day: "Wed", start: "14:00", end: "15:30" }, liuru: { day: "Wed", start: "15:30", end: "17:00" },
+};
+const HOUR = 3600e3;
+// oldest first, as seeded; the board lists newest first
+const POSTS = [
+  { id: 1, username: "alex",  leaving: "shitao", joins: ["baishi", "dachi"],  message: "Clashes with my lab.", hoursAgo: 68, comments: 2 },
+  { id: 2, username: "priya", leaving: "baishi", joins: ["shitao", "bada"],   message: null,                   hoursAgo: 40, comments: 0 },
+  { id: 3, username: "lena",  leaving: "bada",   joins: ["yunlin", "liuru"],  message: null,                   hoursAgo: 5,  comments: 0 },
+];
+const OFFERS = [ // pending
+  { offerer: "priya", postId: 1, offered: "baishi", hoursAgo: 60 },
+  { offerer: "sam",   postId: 1, offered: "dachi",  hoursAgo: 30 },
+  { offerer: "lena",  postId: 2, offered: "bada",   hoursAgo: 20 },
+];
+const UNREAD = { alex: 1, lena: 0 };
+// NOT seed data: the schema allows 1-5 join classes and a long message; the seed's longest is 2. Toggle to see the worst case.
+const STRESS_POST = { id: 9, username: "priya", leaving: "baishi", joins: ["shitao", "bada", "dachi", "yunlin", "liuru"], message: "Happy to move to almost any other session, I only need Wednesday morning free for a part-time shift so please offer whatever you can and we will sort the rest out.", hoursAgo: 40, comments: 3 };
+
+const NOW = Date.now();
+const fmt = new Intl.DateTimeFormat("en-US", { timeZone: "Australia/Sydney", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+function canberra(hoursAgo) { const p = Object.fromEntries(fmt.formatToParts(new Date(NOW - hoursAgo * HOUR)).map(x => [x.type, x.value])); return `${p.weekday} ${p.day} ${p.month}, ${p.hour}:${p.minute}`; }
+function cut(m) { return m === null ? null : m.length > 120 ? m.slice(0, 120) + "…" : m; }
+function offerCount(id) { return OFFERS.filter(o => o.postId === id).length; }
+function boardFor(student, stress) {
+  const all = POSTS.map(p => (stress && p.username === "priya" && student !== "priya") ? { ...STRESS_POST } : p)
+    .map(p => ({ ...p, offers: offerCount(p.id === 9 ? 2 : p.id), message: cut(p.message), posted: canberra(p.hoursAgo) }))
+    .sort((a, b) => a.hoursAgo - b.hoursAgo);
+  const mine = all.find(p => p.username === student) || null;
+  const madeOffers = OFFERS.filter(o => o.offerer === student).map(o => ({ ...o, on: POSTS.find(p => p.id === o.postId), when: canberra(o.hoursAgo) }));
+  return { student, mine, others: all.filter(p => p !== mine), madeOffers, unread: UNREAD[student] || 0 };
+}
+
+// ===== rendering =====
+const cls = (id, give) => { const c = CLASSES[id]; return `<span class="block ${give ? "give" : ""}"><small>${c.day}</small><b>${c.start}–${c.end}</b></span>`; };
+const joins = p => `<span class="chips">${p.joins.map(j => cls(j)).join("")}</span>`;
+const offersBadge = p => `<span class="badge ${p.offers ? "attn" : ""}">${p.offers} pending ${p.offers === 1 ? "offer" : "offers"}</span>`;
+const comments = p => `<span class="meta">${p.comments} ${p.comments === 1 ? "comment" : "comments"}</span>`;
+const msg = p => p.message ? `<span class="msg">“${p.message}”</span>` : "";
+const ownBtns = `<button class="btn ghost">Edit</button><button class="btn ghost">Withdraw</button>`;
+const offerLine = o => `<div class="offer-line"><span class="who">${o.on.username}</span> ${cls(o.on.leaving, true)}<span class="arrow">→</span>${cls(o.offered)}<span class="badge">Pending</span><button class="btn ghost">Withdraw offer</button></div>`;
+
+const V = {
+  // 1: dense rows; the same grid collapses to a card under 700px of container width
+  1(b) {
+    const row = (p, own) => `<div class="row ${own ? "own" : ""}">
+      <span class="who">${p.username}${own ? " (you)" : ""}</span>
+      <span class="give-col">${cls(p.leaving, true)}</span><span class="arrow">→</span>
+      <span class="join-col">${joins(p)}</span>
+      <span class="counts">${offersBadge(p)}<br>${comments(p)}</span>
+      <span class="act">${own ? ownBtns : `<a class="btn" href="#" onclick="return false">View post</a>`}</span>
+      <span class="msgrow">${msg(p)} <span class="meta time">Posted ${p.posted}</span></span>
+    </div>`;
+    const head = `<div class="row head"><span class="label">Student</span><span class="label">Giving</span><span></span><span class="label">Looking for</span><span class="label">Offers</span><span></span></div>`;
+    return `<div class="rows"><h2>Your post</h2>${b.mine ? row(b.mine, true) : `<a class="btn">Post a swap</a>`}
+      ${b.madeOffers.length ? `<h2>Your offers</h2>${b.madeOffers.map(offerLine).join("")}` : ""}
+      <h2>Open posts</h2>${head}${b.others.map(p => row(p)).join("")}</div>`;
+  },
+  // 2: cards at every width
+  2(b) {
+    const card = (p, own) => `<article class="card ${own ? "own" : ""}">
+      <div class="top"><span class="who">${p.username}${own ? " (you)" : ""}</span><span class="meta">Posted ${p.posted}</span></div>
+      <div class="swapline"><div><div class="label">Giving</div>${cls(p.leaving, true)}</div><span class="arrow">→</span><div><div class="label">Looking for</div>${joins(p)}</div></div>
+      ${msg(p)}
+      <div class="foot"><span>${offersBadge(p)} ${comments(p)}</span><span>${own ? ownBtns : `<a class="btn" href="#" onclick="return false">View post</a>`}</span></div>
+    </article>`;
+    return `<div class="cards"><h2>Your post</h2><div class="grid">${b.mine ? card(b.mine, true) : `<a class="btn">Post a swap</a>`}</div>
+      ${b.madeOffers.length ? `<h2>Your offers</h2>${b.madeOffers.map(offerLine).join("")}` : ""}
+      <h2>Open posts</h2><div class="grid">${b.others.map(p => card(p)).join("")}</div></div>`;
+  },
+  // 3: your post + your offers in a side column, open board beside it
+  3(b) {
+    const side = b.mine ? `<div class="card own">
+        <div class="who">${b.mine.username} (you) <span class="meta">Posted ${b.mine.posted}</span></div>
+        <div class="swapline"><div><div class="label">Giving</div>${cls(b.mine.leaving, true)}</div><span class="arrow">→</span><div><div class="label">Looking for</div>${joins(b.mine)}</div></div>
+        ${msg(b.mine)}<div>${offersBadge(b.mine)} ${comments(b.mine)}</div><div class="chips">${ownBtns}</div></div>` : `<a class="btn">Post a swap</a>`;
+    const row = p => `<div class="row">
+      <span class="who">${p.username}</span><span class="give-col">${cls(p.leaving, true)}</span><span class="arrow">→</span><span class="join-col">${joins(p)}</span>
+      <span class="act">${offersBadge(p)}</span>
+      <span class="msgrow">${msg(p)} <span class="meta">Posted ${p.posted} · ${comments(p)}</span></span></div>`;
+    return `<div class="split"><div class="cols">
+      <aside class="side"><h2>Your post</h2>${side}${b.madeOffers.length ? `<h2>Your offers</h2>${b.madeOffers.map(offerLine).join("")}` : ""}</aside>
+      <section class="open"><h2>Open posts</h2>${b.others.map(row).join("")}</section></div></div>`;
+  },
+};
+
+// ===== chrome and state =====
+const q = new URLSearchParams(location.search);
+const S = { variant: +(q.get("variant") || 1), mobile: q.get("mobile") === "1", student: q.get("as") || "alex", stress: q.get("stress") === "1", region: q.get("region") === "1" };
+function sync() { const p = new URLSearchParams(); p.set("variant", S.variant); if (S.mobile) p.set("mobile", 1); if (S.student !== "alex") p.set("as", S.student); if (S.stress) p.set("stress", 1); if (S.region) p.set("region", 1); history.replaceState(null, "", "?" + p); }
+function render() {
+  const b = boardFor(S.student, S.stress);
+  document.getElementById("frame").className = S.mobile ? "mobile" : "";
+  document.getElementById("frame").innerHTML = `<header class="shell"><span class="wordmark">Swap <span>Board</span></span><a href="#">Messages (${b.unread})${b.unread ? "" : ""}</a><a href="#">${S.student}</a><a href="#">Log out</a></header>
+    <main><div id="refetch" class="${S.region ? "show" : ""}">${V[S.variant](b)}</div></main>
+    <footer class="unofficial">Unofficial, student-built COMP4020 demo.</footer>`;
+  const btn = (label, on, fn) => `<button class="${on ? "on" : ""}" onclick="${fn}">${label}</button>`;
+  document.getElementById("bar").innerHTML =
+    `<span class="grp"><b>Variant</b>${[1, 2, 3].map(n => btn(n + " " + ["Rows", "Cards", "Split"][n - 1], S.variant === n, `S.variant=${n};go()`)).join("")}</span>
+     <span class="grp"><b>Width</b>${btn("Desktop", !S.mobile, "S.mobile=false;go()")}${btn("Mobile 390", S.mobile, "S.mobile=true;go()")}</span>
+     <span class="grp"><b>As</b>${btn("alex", S.student === "alex", "S.student='alex';go()")}${btn("lena", S.student === "lena", "S.student='lena';go()")}</span>
+     <span class="grp">${btn("Stress: 5 joins + long message (not seed)", S.stress, "S.stress=!S.stress;go()")}${btn("Show refetch region", S.region, "S.region=!S.region;go()")}</span>`;
+}
+function go() { sync(); render(); }
+go();
+</script>
+</body>
+</html>
