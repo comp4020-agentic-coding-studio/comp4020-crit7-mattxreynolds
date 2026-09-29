@@ -55,6 +55,21 @@ describe("editing a swap post", () => {
     expect(await ownPostId(cookie)).toBe(id);
   });
 
+  it("treats a save with nothing changed as no edit: no marker, still Changes saved", async () => {
+    const { cookie, id } = await postedStudent();
+    // the same fields, with the join classes in another order
+    const res = await submitEdit(cookie, id, { leaving: MON_14, join: [WED_1030, WED_9], message: OK.message });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe("/");
+    expect(res.headers.getSetCookie().some((c) => c.startsWith("flash="))).toBe(true);
+    expect((await pinned(cookie))[0].querySelector(".edited")).toBeNull();
+    expect((await page(`/posts/${id}/`, cookie)).querySelector(".edited")).toBeNull();
+
+    // a real change afterwards does mark it
+    await submitEdit(cookie, id, { leaving: MON_14, join: [WED_9], message: OK.message });
+    expect((await pinned(cookie))[0].querySelector(".edited")).toBeTruthy();
+  });
+
   it("shows the edit form filled with the post as it stands", async () => {
     const { cookie, id } = await postedStudent();
     const doc = await page(`/posts/${id}/edit/`, cookie);

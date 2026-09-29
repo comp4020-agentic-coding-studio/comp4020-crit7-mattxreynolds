@@ -145,6 +145,19 @@ export function editPost(studentId: number, postId: number, input: NewPost): Edi
   const checked = checkInput(input);
   if (!checked.ok) return { ok: false, reason: "invalid", error: checked.error };
 
+  // A save that changes nothing isn't an edit: no marker, no event, and the
+  // student still lands on the board with "Changes saved".
+  const message = checked.message.trim() === "" ? null : checked.message;
+  const current = getPost(postId);
+  if (
+    current &&
+    current.leaving.id === input.leavingClassId &&
+    current.message === message &&
+    [...checked.joinClassIds].sort().join() === current.joins.map((c) => c.id).sort().join()
+  ) {
+    return { ok: true };
+  }
+
   const saved = db.transaction((tx) => {
     // the status check is repeated in the update so an edit racing a withdraw
     // can't bring a withdrawn post back
@@ -152,7 +165,7 @@ export function editPost(studentId: number, postId: number, input: NewPost): Edi
       .update(swapPosts)
       .set({
         leavingClassId: input.leavingClassId,
-        message: checked.message.trim() === "" ? null : checked.message,
+        message,
         editedAt: new Date(),
       })
       .where(and(eq(swapPosts.id, postId), eq(swapPosts.status, "open")))

@@ -73,6 +73,8 @@ describe("/api/events", () => {
     const stream = (res.body as ReadableStream<Uint8Array>).getReader();
     try {
       await readUntil(stream, (seen) => seen.includes(": connected"));
+      // a save that changes nothing sends no event (only the two below do)
+      expect((await submitEdit(cookie, id as number, { leaving: CLASSES[0].id, join: [CLASSES[2].id], message: before })).status).toBe(303);
       expect((await submitEdit(cookie, id as number, { leaving: CLASSES[1].id, join: [CLASSES[3].id], message: after })).status).toBe(303);
       expect((await withdrawPost(cookie, id as number, "/")).status).toBe(303);
 
