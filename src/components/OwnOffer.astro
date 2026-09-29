@@ -18,7 +18,7 @@ const { offer, next, link = false } = Astro.props;
 
 <div class="own-offer">
   {link && <a href={`/posts/${offer.postId}/`}>{offer.poster}'s post</a>}
-  {link && " · "}
+  {link && " "}
   <span>You would leave <span class="class">{classLabel(offer.offered)}</span></span>{" "}
   <span class="offer-status">{offerLabel(offer)}</span>{" "}
   {

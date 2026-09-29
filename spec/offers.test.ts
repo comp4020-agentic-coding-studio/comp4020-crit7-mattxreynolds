@@ -461,7 +461,7 @@ describe("the demo seed's offers (0038)", () => {
 
       const sam = await demoCookie("sam", server.baseUrl);
       const yours = [...(await page("/", sam, server.baseUrl)).querySelectorAll("#your-offers ~ ul .own-offer")].map((el) => text(el));
-      expect(yours).toEqual([`alex's post · You would leave ${classLabel(CLASSES[3])} Pending Withdraw`]);
+      expect(yours).toEqual([`alex's post You would leave ${classLabel(CLASSES[3])} Pending Withdraw`]);
     } finally {
       await server.stop();
     }
