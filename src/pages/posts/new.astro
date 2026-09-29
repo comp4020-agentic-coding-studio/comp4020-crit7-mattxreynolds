@@ -1,0 +1,95 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { classLabel } from "../../lib/classes";
+import { setFlash } from "../../lib/flash";
+import { MESSAGE_MAX, allClasses, createPost, openPostIdFor } from "../../lib/posts";
+
+// Posting a swap (0016, 0017). This page takes its own POST: a refused post
+// is this page again with the reason and what was typed, and a created one
+// lands on the board with a notice (0019, 0045).
+const student = Astro.locals.student;
+if (!student) return Astro.redirect("/login/?next=%2Fposts%2Fnew%2F");
+
+const classes = allClasses();
+let error: string | null = null;
+let existingPostId = openPostIdFor(student.id);
+let leaving = "";
+let joins: string[] = [];
+let message = "";
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  leaving = String(form.get("leaving") ?? "");
+  joins = form.getAll("join").map(String);
+  message = String(form.get("message") ?? "");
+
+  const result = createPost(student.id, { leavingClassId: leaving, joinClassIds: joins, message });
+  if (result.ok) {
+    setFlash(Astro.cookies, Astro.request, "post-created");
+    return Astro.redirect("/", 303);
+  }
+  error = result.error;
+  existingPostId = result.existingPostId ?? existingPostId;
+  Astro.response.status = result.existingPostId !== undefined ? 409 : 400;
+}
+---
+
+<Layout title="Post a swap" student={student}>
+  <h1>Post a swap</h1>
+  {error && <p role="alert">{error}</p>}
+  {
+    existingPostId !== null ? (
+      <p>
+        You already have an open post: <a href={`/posts/${existingPostId}/`}>view your post</a>.
+      </p>
+    ) : (
+      <form method="post" action="/posts/new/" id="post-form">
+        <fieldset>
+          <legend>Class you are leaving</legend>
+          {classes.map((c) => (
+            <label class="choice">
+              <input type="radio" name="leaving" value={c.id} checked={leaving === c.id} required />
+              {classLabel(c)}
+            </label>
+          ))}
+        </fieldset>
+        <fieldset>
+          <legend>Classes you would join</legend>
+          {classes.map((c) => (
+            <label class="choice" data-join-class={c.id}>
+              <input type="checkbox" name="join" value={c.id} checked={joins.includes(c.id)} />
+              {classLabel(c)}
+            </label>
+          ))}
+        </fieldset>
+        <label for="message">Message (optional, up to {MESSAGE_MAX} characters)</label>
+        <textarea id="message" name="message" rows="4" maxlength={MESSAGE_MAX}>{message}</textarea>
+        <button>Post swap</button>
+      </form>
+    )
+  }
+  <p><a href="/">Back to the board</a></p>
+</Layout>
+
+<script>
+  // The form never offers the leaving class as a join class (0017): picking
+  // it hides and clears that checkbox. Without JavaScript the server refuses
+  // the combination instead.
+  const form = document.getElementById("post-form");
+  if (form) {
+    const sync = () => {
+      const leaving = form.querySelector<HTMLInputElement>('input[name="leaving"]:checked')?.value;
+      for (const label of form.querySelectorAll<HTMLElement>("[data-join-class]")) {
+        const box = label.querySelector("input");
+        const same = label.dataset.joinClass === leaving;
+        label.hidden = same;
+        if (box) {
+          box.disabled = same;
+          if (same) box.checked = false;
+        }
+      }
+    };
+    form.addEventListener("change", sync);
+    sync();
+  }
+</script>

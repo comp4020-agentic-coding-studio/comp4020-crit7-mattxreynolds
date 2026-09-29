@@ -1,0 +1,36 @@
+---
+import { boardMessage, type PostView } from "../lib/posts";
+import { classLabel } from "../lib/classes";
+import { formatCanberra } from "../lib/time";
+
+interface Props {
+  post: PostView;
+}
+
+// One swap post as the board shows it (0047): the poster, the leaving and
+// join classes, the message cut short, the posted time, and a link to the
+// post page, which has the rest.
+const { post } = Astro.props;
+const message = boardMessage(post.message);
+---
+
+<article class="post">
+  <h3>{post.username}</h3>
+  <p>Leaving: <span class="class">{classLabel(post.leaving)}</span></p>
+  <p>
+    Would join:{" "}
+    {
+      post.joins.map((c, i) => (
+        <>
+          {i > 0 && ", "}
+          <span class="class">{classLabel(c)}</span>
+        </>
+      ))
+    }
+  </p>
+  {message !== null && <p class="message">{message}</p>}
+  <p class="meta">
+    Posted <time datetime={post.postedAt.toISOString()}>{formatCanberra(post.postedAt)}</time> ·{" "}
+    <a href={`/posts/${post.id}/`}>View post</a>
+  </p>
+</article>

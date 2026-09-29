@@ -1,5 +1,6 @@
 ---
 import { RANDOM_DEMO } from "../lib/auth";
+import { usernamesWithOpenPost } from "../lib/posts";
 import { DEMO_USERNAMES } from "../lib/seed";
 
 interface Props {
@@ -9,6 +10,9 @@ interface Props {
 
 const { next, error } = Astro.props;
 const demoChoices = [...DEMO_USERNAMES, RANDOM_DEMO];
+// each demo student's live line (0039): counts and yes/no only, never what a
+// post says. This slice's part is whether they have an open post.
+const withPost = usernamesWithOpenPost(DEMO_USERNAMES);
 ---
 
 <h1>Log in</h1>
@@ -34,6 +38,11 @@ const demoChoices = [...DEMO_USERNAMES, RANDOM_DEMO];
           <input type="hidden" name="username" value={choice} />
           <button>{choice === RANDOM_DEMO ? "Random demo student" : choice}</button>
         </form>
+        {choice !== RANDOM_DEMO && (
+          <span class="demo-line">
+            {choice}: {withPost.has(choice) ? "open post" : "no post yet"}
+          </span>
+        )}
       </li>
     ))
   }

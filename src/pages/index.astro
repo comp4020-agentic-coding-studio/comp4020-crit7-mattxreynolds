@@ -1,12 +1,22 @@
 ---
 import LoginForm from "../components/LoginForm.astro";
+import PostEntry from "../components/PostEntry.astro";
 import Layout from "../layouts/Layout.astro";
+import { takeFlash } from "../lib/flash";
+import { listOpenPosts } from "../lib/posts";
 
 // A logged-out visitor gets the login page here, in place, with a 200 (0048)
 // — the deploy probe and the link check both fetch "/" without following
 // redirects. src/middleware.ts lets a logged-out "/" through for exactly
 // this reason; every other protected page redirects instead.
 const student = Astro.locals.student;
+
+// The board (0019): every open post, newest first, with the student's own
+// pinned under "Your post" instead of repeated in the list.
+const notice = student ? takeFlash(Astro.cookies) : null;
+const open = student ? listOpenPosts() : [];
+const mine = open.find((post) => post.studentId === student?.id);
+const others = open.filter((post) => post !== mine);
 ---
 
 <Layout title={student ? "Board" : "Log in"} student={student}>
@@ -17,6 +27,15 @@ const student = Astro.locals.student;
         <p>
           Logged in as <strong>{student.username}</strong>.
         </p>
+        {notice && <p role="status">{notice}</p>}
+        <section aria-labelledby="your-post">
+          <h2 id="your-post">Your post</h2>
+          {mine ? <PostEntry post={mine} /> : <a class="button" href="/posts/new/">Post a swap</a>}
+        </section>
+        <section aria-labelledby="open-posts">
+          <h2 id="open-posts">Open posts</h2>
+          {others.length === 0 ? <p>No other open swap posts.</p> : others.map((post) => <PostEntry post={post} />)}
+        </section>
       </>
     ) : (
       <LoginForm next="/" error={null} />
