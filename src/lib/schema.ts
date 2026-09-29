@@ -48,7 +48,9 @@ export const classes = sqliteTable("classes", {
 
 // A swap post (0016): one leaving class, its join classes beside it in
 // swap_post_join_classes, an optional message and when it was posted, as an
-// instant (0046 formats it for Canberra when shown).
+// instant (0046 formats it for Canberra when shown). It is open, or
+// withdrawn (0018: withdrawn_at, and withdrawn_by, the student who did it),
+// or swapped (0024, when offers arrive); edited_at is the last edit (0018).
 export const swapPosts = sqliteTable(
   "swap_posts",
   {
@@ -60,10 +62,13 @@ export const swapPosts = sqliteTable(
       .notNull()
       .references(() => classes.id),
     message: text(),
-    status: text({ enum: ["open"] })
+    status: text({ enum: ["open", "withdrawn", "swapped"] })
       .notNull()
       .default("open"),
     postedAt: int("posted_at", { mode: "timestamp_ms" }).notNull(),
+    editedAt: int("edited_at", { mode: "timestamp_ms" }),
+    withdrawnAt: int("withdrawn_at", { mode: "timestamp_ms" }),
+    withdrawnBy: int("withdrawn_by").references(() => students.id),
   },
   // at most one open post per student (0017), enforced by the database so two
   // simultaneous requests can't both get in
