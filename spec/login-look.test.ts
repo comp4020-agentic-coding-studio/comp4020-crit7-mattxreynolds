@@ -25,7 +25,11 @@ describe("the one plain line (0053)", () => {
   it("is the only tagline and there is no hero, on login or signup", async () => {
     for (const path of ["/", "/login/", "/signup/"]) {
       const doc = await page(path);
-      expect(doc.querySelector(".hero, [class*='hero'], header + section"), path).toBeNull();
+      // the page is its heading, at most the one line, and the cards: nothing else can be a hero
+      const kids = [...(doc.querySelector("main .auth-page")?.children ?? [])].map((el) => (el.matches("h1, .tagline, .auth-card") ? el.tagName : `unexpected ${el.tagName}`));
+      expect(kids.filter((k) => k.startsWith("unexpected")), path).toEqual([]);
+      expect(doc.querySelector("main")?.children, path).toHaveLength(1);
+      expect(doc.querySelector("main img, main picture, main svg, [class*='hero']"), path).toBeNull();
       expect(doc.querySelectorAll(".tagline").length, path).toBe(path === "/signup/" ? 0 : 1);
     }
   });
