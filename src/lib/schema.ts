@@ -146,6 +146,30 @@ export const comments = sqliteTable(
   (table) => [index("comments_post_idx").on(table.postId)],
 );
 
+// A private message (0030, 0031, 0032, 0033): plain text from one student to
+// another. It can't be edited or deleted, and it belongs to no post: a
+// conversation is the query over the pair (0031). read_at is when its
+// recipient opened the conversation, empty until then (0033).
+export const privateMessages = sqliteTable(
+  "private_messages",
+  {
+    id: int().primaryKey({ autoIncrement: true }),
+    senderId: int("sender_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    recipientId: int("recipient_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    body: text().notNull(),
+    createdAt: int("created_at", { mode: "timestamp_ms" }).notNull(),
+    readAt: int("read_at", { mode: "timestamp_ms" }),
+  },
+  (table) => [
+    index("private_messages_sender_idx").on(table.senderId),
+    index("private_messages_recipient_idx").on(table.recipientId),
+  ],
+);
+
 export type Student = typeof students.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type SchoolClass = typeof classes.$inferSelect;
