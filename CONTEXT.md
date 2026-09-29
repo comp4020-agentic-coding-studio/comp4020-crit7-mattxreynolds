@@ -107,6 +107,15 @@ Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
   COMP4020 demo. Not an ANU system: it can't change your real class
   allocation." It sits beside, not in place of, the demo-login notice.
   Fixed by #30 (`0052`).
+- **Full redesign / shell only**: a screen with a full redesign has its own
+  transit-board layout; a shell-only screen gets just the shared header,
+  footer, colours, type, buttons and form fields, with its page layout
+  unchanged. Every screen is full unless it is cut to shell only. Fixed by #29
+  (`docs/decisions/0055`).
+- **Cut order**: the order screens drop from full redesign to shell only if
+  time runs short: About, inbox, conversation, new/edit post and the accept
+  step; then the post page; then login and signup. The board is never cut.
+  Fixed by #29 (`0056`).
 
 ## Harness
 
