@@ -52,6 +52,8 @@ async function offer(from: { cookie: string }, on: { postId: number }, offered: 
   return id;
 }
 
+const boardPosters = async (cookie: string) =>
+  [...(await page("/", cookie)).querySelectorAll("#open-posts ~ .post h3")].map((h) => text(h));
 const get = (path: string, cookie: string | null) =>
   fetch(new URL(path, baseUrl), { headers: cookie ? { cookie } : {}, redirect: "manual" });
 const main = async (path: string, cookie: string) => text((await page(path, cookie)).querySelector("main"));
@@ -80,7 +82,7 @@ describe("declining an offer", () => {
     expect(text(posterDoc.querySelector(".offer-count"))).toBe("0 pending offers");
     expect(posterDoc.querySelector(".offers")).toBeNull();
     expect(posterDoc.querySelector(".controls")).not.toBeNull();
-    expect(text((await page("/", o.cookie)).querySelector("#open-posts ~ .post h3"))).toBeTruthy();
+    expect(await boardPosters(o.cookie)).toContain(p.username);
 
     // the same student can't offer again, but anyone else can
     const again = await submitOffer(o.cookie, p.postId, { class: WED_1030 });
@@ -240,8 +242,10 @@ describe("what an accept closes (0024)", () => {
     await offer(o, y, WED_1030); // the offerer's own offer elsewhere
     await offer(third, o, MON_14); // an offer on the offerer's own open post
     await offer(third, x, WED_1030); // unrelated to the swap
+    await offer(p, o, MON_1530); // the poster's offer on the post the swap withdraws
 
     expect((await acceptOffer(p.cookie, accepted)).status).toBe(303);
+    expect(await statusOf(p.cookie, o.postId)).toBe("Closed: you swapped");
 
     expect(await main(`/posts/${p.postId}/`, p.cookie)).toContain("Swapped:");
     expect(text((await page(`/posts/${o.postId}/`, o.cookie)).querySelector(".withdrawn"))).toContain("withdrawn");
@@ -273,7 +277,7 @@ describe("after an accept", () => {
     expect(posterSpot?.querySelector(`a[href="/posts/${p.postId}/"]`)).not.toBeNull();
     expect(text(posterSpot)).toContain("swapped");
     // the swapped post is off the board
-    expect(text((await page("/", o.cookie)).querySelector("#open-posts ~ .post h3"))).not.toBe(p.username);
+    expect(await boardPosters(o.cookie)).not.toContain(p.username);
     // the offerer's post was withdrawn: they can post again too, and see Accepted
     expect((await spot(o.cookie))?.querySelector('a[href="/posts/new/"]')).not.toBeNull();
     expect(await yourOffers(o.cookie)).toEqual([expect.stringContaining("Accepted")]);
