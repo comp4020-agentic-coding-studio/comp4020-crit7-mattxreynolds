@@ -41,16 +41,12 @@ let me: Student;
 let unreadFrom: Student;
 let readFrom: Student;
 let sentTo: Student;
-let reader: Student;
-let writer: Student;
 
 beforeAll(async () => {
   me = await student("lookme");
   unreadFrom = await student("lookun");
   readFrom = await student("lookrd");
   sentTo = await student("lookst");
-  reader = await student("lookrdr");
-  writer = await student("lookwr");
   await send(readFrom, me, "read me first");
   await pause();
   await send(unreadFrom, me, "still unread");
