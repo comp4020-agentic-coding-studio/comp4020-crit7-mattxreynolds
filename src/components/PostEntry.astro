@@ -3,14 +3,18 @@ import { boardMessage, type PostView } from "../lib/posts";
 import { classLabel } from "../lib/classes";
 import { formatCanberra } from "../lib/time";
 
+import PostControls from "./PostControls.astro";
+
 interface Props {
   post: PostView;
+  // the student's own pinned post carries Edit and Withdraw (0019)
+  own?: boolean;
 }
 
 // One swap post as the board shows it (0047): the poster, the leaving and
 // join classes, the message cut short, the posted time, and a link to the
 // post page, which has the rest.
-const { post } = Astro.props;
+const { post, own = false } = Astro.props;
 const message = boardMessage(post.message);
 ---
 
@@ -31,6 +35,17 @@ const message = boardMessage(post.message);
   {message !== null && <p class="message">{message}</p>}
   <p class="meta">
     Posted <time datetime={post.postedAt.toISOString()}>{formatCanberra(post.postedAt)}</time> ·{" "}
+    {
+      post.editedAt && (
+        <>
+          <span class="edited">
+            Edited <time datetime={post.editedAt.toISOString()}>{formatCanberra(post.editedAt)}</time>
+          </span>{" "}
+          ·{" "}
+        </>
+      )
+    }
     <a href={`/posts/${post.id}/`}>View post</a>
   </p>
+  {own && <PostControls postId={post.id} next="/" />}
 </article>

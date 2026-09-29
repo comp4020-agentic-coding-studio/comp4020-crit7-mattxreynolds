@@ -159,3 +159,22 @@ textarea {
 .meta a {
   white-space: nowrap;
 }
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block: 0.5rem;
+}
+
+.controls form {
+  margin: 0;
+}
+
+.withdrawn {
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid #8a5a00;
+  background: #fbf3e2;
+  font-weight: 600;
+}

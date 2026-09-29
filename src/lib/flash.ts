@@ -7,6 +7,7 @@ import { isSecureRequest } from "./auth";
 const FLASH_COOKIE = "flash";
 const NOTICES = {
   "post-created": "Your swap post is on the board",
+  "post-saved": "Changes saved",
 } as const;
 export type Flash = keyof typeof NOTICES;
 

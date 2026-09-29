@@ -9,7 +9,7 @@ bus.setMaxListeners(0);
 
 // "post N changed" (0043). /api/events is public, so this carries only the
 // post id and a kind: never a username, class, message or any other content.
-export type PostChangeKind = "created";
+export type PostChangeKind = "created" | "edited" | "withdrawn";
 
 export function publishPostChanged(postId: number, kind: PostChangeKind): void {
   bus.emit("message", { type: "post-changed", postId, kind });

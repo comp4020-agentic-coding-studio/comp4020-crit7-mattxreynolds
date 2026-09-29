@@ -30,7 +30,7 @@ const others = open.filter((post) => post !== mine);
         {notice && <p role="status">{notice}</p>}
         <section aria-labelledby="your-post">
           <h2 id="your-post">Your post</h2>
-          {mine ? <PostEntry post={mine} /> : <a class="button" href="/posts/new/">Post a swap</a>}
+          {mine ? <PostEntry post={mine} own /> : <a class="button" href="/posts/new/">Post a swap</a>}
         </section>
         <section aria-labelledby="open-posts">
           <h2 id="open-posts">Open posts</h2>

@@ -16,6 +16,8 @@ export interface PostView {
   message: string | null;
   status: string;
   postedAt: Date;
+  editedAt: Date | null;
+  withdrawnAt: Date | null;
 }
 
 export interface NewPost {
@@ -27,6 +29,12 @@ export interface NewPost {
 export type CreatePostResult =
   | { ok: true; postId: number }
   | { ok: false; error: string; existingPostId?: number };
+
+export type EditPostResult =
+  | { ok: true }
+  | { ok: false; reason: "not-found" | "forbidden" | "not-open" | "invalid"; error: string };
+
+export type WithdrawPostResult = { ok: true } | { ok: false; reason: "not-found" | "forbidden" | "not-open"; error: string };
 
 const charCount = (text: string): number => [...text].length;
 
@@ -43,14 +51,11 @@ export function openPostIdFor(studentId: number): number | null {
   return row?.id ?? null;
 }
 
-// Every rule here is enforced on the server (0017, 0016): the form only makes
-// the mistakes hard to make.
-export function createPost(studentId: number, input: NewPost): CreatePostResult {
-  const existingPostId = openPostIdFor(studentId);
-  if (existingPostId !== null) {
-    return { ok: false, error: "You already have an open post.", existingPostId };
-  }
+type CheckedInput = { ok: true; joinClassIds: string[]; message: string } | { ok: false; error: string };
 
+// The rules a post's contents must meet, for a new post and an edit alike
+// (0017, 0018): one place, so both refuse with the same message.
+function checkInput(input: NewPost): CheckedInput {
   const known = new Set(allClasses().map((c) => c.id));
   if (!known.has(input.leavingClassId)) {
     return { ok: false, error: "Pick the class you are leaving." };
@@ -70,6 +75,21 @@ export function createPost(studentId: number, input: NewPost): CreatePostResult 
   if (charCount(message) > MESSAGE_MAX) {
     return { ok: false, error: `Message must be at most ${MESSAGE_MAX} characters.` };
   }
+
+  return { ok: true, joinClassIds, message };
+}
+
+// Every rule here is enforced on the server (0017, 0016): the form only makes
+// the mistakes hard to make.
+export function createPost(studentId: number, input: NewPost): CreatePostResult {
+  const existingPostId = openPostIdFor(studentId);
+  if (existingPostId !== null) {
+    return { ok: false, error: "You already have an open post.", existingPostId };
+  }
+
+  const checked = checkInput(input);
+  if (!checked.ok) return checked;
+  const { joinClassIds, message } = checked;
 
   let postId: number;
   try {
@@ -102,7 +122,74 @@ export function createPost(studentId: number, input: NewPost): CreatePostResult 
   return { ok: true, postId };
 }
 
-function toViews(rows: { id: number; studentId: number; username: string; leavingClassId: string; message: string | null; status: string; postedAt: Date }[]): PostView[] {
+const NOT_FOUND = "There is no swap post with that number.";
+const NOT_YOURS = "Only the poster can change this swap post.";
+const WITHDRAWN = "This swap post was withdrawn.";
+
+// The post as a change to it needs to see it: who owns it and whether it is
+// still open. Whoever isn't the poster is refused first, so a stranger learns
+// nothing else about the post from the reason.
+function changeable(studentId: number, postId: number): { ok: true } | { ok: false; reason: "not-found" | "forbidden" | "not-open"; error: string } {
+  const row = db.select({ studentId: swapPosts.studentId, status: swapPosts.status }).from(swapPosts).where(eq(swapPosts.id, postId)).get();
+  if (!row) return { ok: false, reason: "not-found", error: NOT_FOUND };
+  if (row.studentId !== studentId) return { ok: false, reason: "forbidden", error: NOT_YOURS };
+  if (row.status !== "open") return { ok: false, reason: "not-open", error: WITHDRAWN };
+  return { ok: true };
+}
+
+// Editing (0018): the poster changes an open post, under the same rules as a
+// new one. (Locking it while offers are pending arrives with offers.)
+export function editPost(studentId: number, postId: number, input: NewPost): EditPostResult {
+  const allowed = changeable(studentId, postId);
+  if (!allowed.ok) return allowed;
+  const checked = checkInput(input);
+  if (!checked.ok) return { ok: false, reason: "invalid", error: checked.error };
+
+  const saved = db.transaction((tx) => {
+    // the status check is repeated in the update so an edit racing a withdraw
+    // can't bring a withdrawn post back
+    const { changes } = tx
+      .update(swapPosts)
+      .set({
+        leavingClassId: input.leavingClassId,
+        message: checked.message.trim() === "" ? null : checked.message,
+        editedAt: new Date(),
+      })
+      .where(and(eq(swapPosts.id, postId), eq(swapPosts.status, "open")))
+      .run();
+    if (changes === 0) return false;
+    tx.delete(swapPostJoinClasses).where(eq(swapPostJoinClasses.postId, postId)).run();
+    tx.insert(swapPostJoinClasses)
+      .values(checked.joinClassIds.map((classId) => ({ postId, classId })))
+      .run();
+    return true;
+  });
+  if (!saved) return { ok: false, reason: "not-open", error: WITHDRAWN };
+
+  publishPostChanged(postId, "edited");
+  return { ok: true };
+}
+
+// Withdrawing (0018): the poster takes an open post down at any time. It
+// leaves the board and they can post again; its page still loads (0020).
+export function withdrawPost(studentId: number, postId: number): WithdrawPostResult {
+  const allowed = changeable(studentId, postId);
+  if (!allowed.ok) return allowed;
+
+  const { changes } = db
+    .update(swapPosts)
+    .set({ status: "withdrawn", withdrawnAt: new Date(), withdrawnBy: studentId })
+    .where(and(eq(swapPosts.id, postId), eq(swapPosts.status, "open")))
+    .run();
+  if (changes === 0) return { ok: false, reason: "not-open", error: WITHDRAWN };
+
+  publishPostChanged(postId, "withdrawn");
+  return { ok: true };
+}
+
+type PostRow = Omit<PostView, "leaving" | "joins"> & { leavingClassId: string };
+
+function toViews(rows: PostRow[]): PostView[] {
   if (rows.length === 0) return [];
   const classById = new Map(allClasses().map((c) => [c.id, c]));
   const joinRows = db
@@ -130,6 +217,8 @@ const postColumns = {
   message: swapPosts.message,
   status: swapPosts.status,
   postedAt: swapPosts.postedAt,
+  editedAt: swapPosts.editedAt,
+  withdrawnAt: swapPosts.withdrawnAt,
 };
 
 // Every open post, newest first (0019).

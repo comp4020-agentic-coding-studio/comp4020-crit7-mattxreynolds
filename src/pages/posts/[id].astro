@@ -1,10 +1,13 @@
 ---
+import PostControls from "../../components/PostControls.astro";
 import Layout from "../../layouts/Layout.astro";
 import { classLabel } from "../../lib/classes";
 import { getPost } from "../../lib/posts";
 import { formatCanberra } from "../../lib/time";
 
-// The post page (0020): the whole post. An id that never existed is a 404.
+// The post page (0020): the whole post, edited marker included (0018). A
+// withdrawn post still loads, says so with the time and has no controls. An id
+// that never existed is a 404.
 const student = Astro.locals.student;
 const id = /^[0-9]+$/.test(Astro.params.id ?? "") ? Number(Astro.params.id) : null;
 const post = id === null ? null : getPost(id);
@@ -16,6 +19,14 @@ if (!post) Astro.response.status = 404;
     post ? (
       <>
         <h1>Swap post by {post.username}</h1>
+        {
+          post.status === "withdrawn" && post.withdrawnAt && (
+            <p class="withdrawn">
+              This swap post was withdrawn on{" "}
+              <time datetime={post.withdrawnAt.toISOString()}>{formatCanberra(post.withdrawnAt)}</time>
+            </p>
+          )
+        }
         <dl>
           <dt>Poster</dt>
           <dd>{post.username}</dd>
@@ -29,7 +40,18 @@ if (!post) Astro.response.status = 404;
           <dd>
             <time datetime={post.postedAt.toISOString()}>{formatCanberra(post.postedAt)}</time>
           </dd>
+          {
+            post.editedAt && (
+              <>
+                <dt>Edited</dt>
+                <dd class="edited">
+                  <time datetime={post.editedAt.toISOString()}>{formatCanberra(post.editedAt)}</time>
+                </dd>
+              </>
+            )
+          }
         </dl>
+        {post.status === "open" && post.studentId === student?.id && <PostControls postId={post.id} next={`/posts/${post.id}/`} />}
         <p>
           <a href="/">Back to the board</a>
         </p>

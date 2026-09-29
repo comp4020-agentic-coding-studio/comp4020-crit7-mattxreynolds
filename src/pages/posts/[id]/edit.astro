@@ -1,0 +1,69 @@
+---
+import PostForm from "../../../components/PostForm.astro";
+import Layout from "../../../layouts/Layout.astro";
+import { setFlash } from "../../../lib/flash";
+import { allClasses, editPost, getPost } from "../../../lib/posts";
+
+// Editing a swap post (0018). Like the new-post page this takes its own POST:
+// a refused edit is this page again with the reason and what was typed, and a
+// saved one lands on the board with "Changes saved" (0019, 0045).
+const student = Astro.locals.student;
+const id = /^[0-9]+$/.test(Astro.params.id ?? "") ? Number(Astro.params.id) : null;
+if (!student) return Astro.redirect(`/login/?next=${encodeURIComponent(`/posts/${id ?? 0}/edit/`)}`);
+
+const post = id === null ? null : getPost(id);
+const classes = allClasses();
+let error: string | null = null;
+let leaving = post?.leaving.id ?? "";
+let joins = post?.joins.map((c) => c.id) ?? [];
+let message = post?.message ?? "";
+// what is in the way of editing, if anything: the page then says so instead
+// of showing the form
+let blocked: string | null = null;
+
+if (!post) {
+  Astro.response.status = 404;
+  blocked = "There is no swap post with that number.";
+} else if (post.studentId !== student.id) {
+  Astro.response.status = 403;
+  blocked = "Only the poster can edit this swap post.";
+} else if (post.status !== "open") {
+  Astro.response.status = 409;
+  blocked = "This swap post was withdrawn.";
+} else if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  leaving = String(form.get("leaving") ?? "");
+  joins = form.getAll("join").map(String);
+  message = String(form.get("message") ?? "");
+
+  const result = editPost(student.id, post.id, { leavingClassId: leaving, joinClassIds: joins, message });
+  if (result.ok) {
+    setFlash(Astro.cookies, Astro.request, "post-saved");
+    return Astro.redirect("/", 303);
+  }
+  error = result.error;
+  Astro.response.status = result.reason === "invalid" ? 400 : result.reason === "not-open" ? 409 : result.reason === "forbidden" ? 403 : 404;
+  if (result.reason !== "invalid") blocked = result.error;
+}
+---
+
+<Layout title="Edit your swap post" student={student}>
+  <h1>Edit your swap post</h1>
+  {error && !blocked && <p role="alert">{error}</p>}
+  {
+    blocked ? (
+      <p role="alert">
+        {blocked}
+        {post && post.studentId === student.id && (
+          <>
+            {" "}
+            <a href={`/posts/${post.id}/`}>View the post</a>.
+          </>
+        )}
+      </p>
+    ) : (
+      <PostForm action={`/posts/${post?.id}/edit/`} classes={classes} leaving={leaving} joins={joins} message={message} submitLabel="Save changes" />
+    )
+  }
+  <p><a href="/">Back to the board</a></p>
+</Layout>

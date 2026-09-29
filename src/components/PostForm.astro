@@ -1,0 +1,69 @@
+---
+import { classLabel } from "../lib/classes";
+import { MESSAGE_MAX } from "../lib/posts";
+import type { SchoolClass } from "../lib/schema";
+
+interface Props {
+  action: string;
+  classes: SchoolClass[];
+  leaving: string;
+  joins: string[];
+  message: string;
+  submitLabel: string;
+}
+
+// The form a swap post is written in, new or edited (0016, 0018): the same
+// fields and the same server rules either way.
+const { action, classes, leaving, joins, message, submitLabel } = Astro.props;
+---
+
+<form method="post" action={action} id="post-form">
+  <fieldset>
+    <legend>Class you are leaving</legend>
+    {
+      classes.map((c) => (
+        <label class="choice">
+          <input type="radio" name="leaving" value={c.id} checked={leaving === c.id} required />
+          {classLabel(c)}
+        </label>
+      ))
+    }
+  </fieldset>
+  <fieldset>
+    <legend>Classes you would join</legend>
+    {
+      classes.map((c) => (
+        <label class="choice" data-join-class={c.id}>
+          <input type="checkbox" name="join" value={c.id} checked={joins.includes(c.id)} />
+          {classLabel(c)}
+        </label>
+      ))
+    }
+  </fieldset>
+  <label for="message">Message (optional, up to {MESSAGE_MAX} characters)</label>
+  <textarea id="message" name="message" rows="4" maxlength={MESSAGE_MAX}>{message}</textarea>
+  <button>{submitLabel}</button>
+</form>
+
+<script>
+  // The form never offers the leaving class as a join class (0017): picking
+  // it hides and clears that checkbox. Without JavaScript the server refuses
+  // the combination instead.
+  const form = document.getElementById("post-form");
+  if (form) {
+    const sync = () => {
+      const leaving = form.querySelector<HTMLInputElement>('input[name="leaving"]:checked')?.value;
+      for (const label of form.querySelectorAll<HTMLElement>("[data-join-class]")) {
+        const box = label.querySelector("input");
+        const same = label.dataset.joinClass === leaving;
+        label.hidden = same;
+        if (box) {
+          box.disabled = same;
+          if (same) box.checked = false;
+        }
+      }
+    };
+    form.addEventListener("change", sync);
+    sync();
+  }
+</script>

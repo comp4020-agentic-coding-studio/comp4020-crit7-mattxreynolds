@@ -1,8 +1,8 @@
 ---
 import Layout from "../../layouts/Layout.astro";
-import { classLabel } from "../../lib/classes";
+import PostForm from "../../components/PostForm.astro";
 import { setFlash } from "../../lib/flash";
-import { MESSAGE_MAX, allClasses, createPost, openPostIdFor } from "../../lib/posts";
+import { allClasses, createPost, openPostIdFor } from "../../lib/posts";
 
 // Posting a swap (0016, 0017). This page takes its own POST: a refused post
 // is this page again with the reason and what was typed, and a created one
@@ -43,53 +43,9 @@ if (Astro.request.method === "POST") {
         You already have an open post: <a href={`/posts/${existingPostId}/`}>view your post</a>.
       </p>
     ) : (
-      <form method="post" action="/posts/new/" id="post-form">
-        <fieldset>
-          <legend>Class you are leaving</legend>
-          {classes.map((c) => (
-            <label class="choice">
-              <input type="radio" name="leaving" value={c.id} checked={leaving === c.id} required />
-              {classLabel(c)}
-            </label>
-          ))}
-        </fieldset>
-        <fieldset>
-          <legend>Classes you would join</legend>
-          {classes.map((c) => (
-            <label class="choice" data-join-class={c.id}>
-              <input type="checkbox" name="join" value={c.id} checked={joins.includes(c.id)} />
-              {classLabel(c)}
-            </label>
-          ))}
-        </fieldset>
-        <label for="message">Message (optional, up to {MESSAGE_MAX} characters)</label>
-        <textarea id="message" name="message" rows="4" maxlength={MESSAGE_MAX}>{message}</textarea>
-        <button>Post swap</button>
-      </form>
+      <PostForm action="/posts/new/" classes={classes} leaving={leaving} joins={joins} message={message} submitLabel="Post swap" />
     )
   }
   <p><a href="/">Back to the board</a></p>
 </Layout>
 
-<script>
-  // The form never offers the leaving class as a join class (0017): picking
-  // it hides and clears that checkbox. Without JavaScript the server refuses
-  // the combination instead.
-  const form = document.getElementById("post-form");
-  if (form) {
-    const sync = () => {
-      const leaving = form.querySelector<HTMLInputElement>('input[name="leaving"]:checked')?.value;
-      for (const label of form.querySelectorAll<HTMLElement>("[data-join-class]")) {
-        const box = label.querySelector("input");
-        const same = label.dataset.joinClass === leaving;
-        label.hidden = same;
-        if (box) {
-          box.disabled = same;
-          if (same) box.checked = false;
-        }
-      }
-    };
-    form.addEventListener("change", sync);
-    sync();
-  }
-</script>

@@ -1,0 +1,19 @@
+---
+interface Props {
+  postId: number;
+  // the page these controls sit on: Withdraw returns there (0045)
+  next: string;
+}
+
+// Edit and Withdraw for a poster's own open post (0018), on "Your post" and
+// on the post page.
+const { postId, next } = Astro.props;
+---
+
+<div class="controls">
+  <a class="button" href={`/posts/${postId}/edit/`}>Edit</a>
+  <form method="post" action={`/posts/${postId}/withdraw`}>
+    <input type="hidden" name="next" value={next} />
+    <button>Withdraw</button>
+  </form>
+</div>
