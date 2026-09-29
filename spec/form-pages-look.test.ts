@@ -10,17 +10,19 @@ import { acceptOffer, newStudent, ownPostId, page, submitOffer, submitPost, text
 // posts.test.ts, posts-edit.test.ts, accept.test.ts and readme.test.ts. Here
 // is what the markup promises: one column, the form or the question in one
 // card, the error still an attention alert, and About's README in one article.
-// Signing up hashes a password, so the file shares three students.
+// Signing up hashes a password, so the file shares its students.
 const [MON_14, , WED_9] = CLASSES.map((c) => c.id);
 
 let poster: string;
 let offerer: string;
 let postId: number;
 let offerId: number;
+let fresh: string; // no open post: sees the form, and a refused post is the validation
 
 beforeAll(async () => {
   poster = await newStudent("formlook");
   offerer = await newStudent("formoffer");
+  fresh = await newStudent("formfresh");
   expect((await submitPost(poster, { leaving: MON_14, join: [WED_9] })).status).toBe(303);
   const id = await ownPostId(poster);
   if (id === null) throw new Error("no post");
@@ -33,7 +35,7 @@ beforeAll(async () => {
 
 describe("new post", () => {
   it("is one column with the post form as one card, fieldsets and message inside it", async () => {
-    const doc = await page("/posts/new/", await newStudent("formfresh"));
+    const doc = await page("/posts/new/", fresh);
     const column = doc.querySelector("main > .form-page");
     expect(column?.querySelector(":scope > h1")?.textContent).toBe("Post a swap");
     const form = column?.querySelector("form#post-form.form-card");
@@ -43,8 +45,7 @@ describe("new post", () => {
   });
 
   it("keeps a refused post's reason as an attention alert in the column, with the form and what was typed", async () => {
-    const cookie = await newStudent("formrefuse"); // no open post, so it is the validation that refuses
-    const res = await submitPost(cookie, { leaving: MON_14, join: [MON_14], message: "kept text" });
+    const res = await submitPost(fresh, { leaving: MON_14, join: [MON_14], message: "kept text" });
     expect(res.status).toBe(400);
     const doc = new JSDOM(await res.text()).window.document;
     const alert = doc.querySelector(".form-page > [role=alert]");
