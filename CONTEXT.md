@@ -55,7 +55,12 @@ Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
   they've made under "Your offers". Fixed by #8 (`docs/decisions/0019`).
 - **Side column**: on a wide screen, the board column holding "Your post" and
   "Your offers" beside "Open posts"; on a narrow screen it stacks above them.
-  Fixed by #28 (`0054`).
+  Fixed by #28 (`0054`). The post page has one too, holding its actions (offers,
+  "Your offer", the offer form, Edit and Withdraw) beside the comments. Fixed by
+  #31 (`0057`).
+- **Exchange row**: the GIVING (leaving class) → LOOKING FOR (join classes)
+  line that opens a board entry and, enlarged, the post page. Fixed by #31
+  (`0057`).
 - **Post page**: one swap post's own page, `/posts/<id>/`, where its poster
   sees offers. It still loads after the post is withdrawn. Fixed by #8
   (`0020`).
