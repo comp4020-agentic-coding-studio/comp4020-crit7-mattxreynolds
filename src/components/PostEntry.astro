@@ -1,6 +1,7 @@
 ---
 import { boardMessage, type PostView } from "../lib/posts";
 import { classLabel } from "../lib/classes";
+import { countLabel } from "../lib/offers";
 import { formatCanberra } from "../lib/time";
 
 import PostControls from "./PostControls.astro";
@@ -12,8 +13,8 @@ interface Props {
 }
 
 // One swap post as the board shows it (0047): the poster, the leaving and
-// join classes, the message cut short, the posted time, and a link to the
-// post page, which has the rest.
+// join classes, the message cut short, the posted time, the pending-offer
+// count and a link to the post page, which has the rest.
 const { post, own = false } = Astro.props;
 const message = boardMessage(post.message);
 ---
@@ -46,6 +47,9 @@ const message = boardMessage(post.message);
       )
     }
     <a href={`/posts/${post.id}/`}>View post</a>
+  </p>
+  <p class="offer-count">
+    {own ? <a href={`/posts/${post.id}/`}>{countLabel(post.pendingOffers)}</a> : countLabel(post.pendingOffers)}
   </p>
   {own && <PostControls postId={post.id} next="/" />}
 </article>

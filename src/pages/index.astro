@@ -2,7 +2,9 @@
 import LoginForm from "../components/LoginForm.astro";
 import PostEntry from "../components/PostEntry.astro";
 import Layout from "../layouts/Layout.astro";
+import OwnOffer from "../components/OwnOffer.astro";
 import { takeFlash } from "../lib/flash";
+import { offersMadeBy } from "../lib/offer-store";
 import { listOpenPosts } from "../lib/posts";
 
 // A logged-out visitor gets the login page here, in place, with a 200 (0048)
@@ -17,6 +19,9 @@ const notice = student ? takeFlash(Astro.cookies) : null;
 const open = student ? listOpenPosts() : [];
 const mine = open.find((post) => post.studentId === student?.id);
 const others = open.filter((post) => post !== mine);
+// "Your offers" (0019, 0025): every offer the student has made, pending first;
+// the section appears only once they have made one
+const madeOffers = student ? offersMadeBy(student.id) : [];
 ---
 
 <Layout title={student ? "Board" : "Log in"} student={student}>
@@ -32,6 +37,20 @@ const others = open.filter((post) => post !== mine);
           <h2 id="your-post">Your post</h2>
           {mine ? <PostEntry post={mine} own /> : <a class="button" href="/posts/new/">Post a swap</a>}
         </section>
+        {
+          madeOffers.length > 0 && (
+            <section aria-labelledby="your-offers">
+              <h2 id="your-offers">Your offers</h2>
+              <ul class="your-offers">
+                {madeOffers.map((offer) => (
+                  <li>
+                    <OwnOffer offer={offer} next="/" link />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
         <section aria-labelledby="open-posts">
           <h2 id="open-posts">Open posts</h2>
           {others.length === 0 ? <p>No other open swap posts.</p> : others.map((post) => <PostEntry post={post} />)}

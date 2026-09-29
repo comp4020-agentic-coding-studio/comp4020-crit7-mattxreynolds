@@ -178,3 +178,43 @@ textarea {
   background: #fbf3e2;
   font-weight: 600;
 }
+
+.offer-count {
+  font-weight: 600;
+}
+
+.offers,
+.your-offers {
+  padding-inline-start: 1.2rem;
+}
+
+.your-offers {
+  list-style: none;
+  padding: 0;
+}
+
+.your-offers li {
+  margin-block: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #c8c8c8;
+  border-radius: 0.25rem;
+}
+
+.own-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+}
+
+.own-offer form {
+  margin: 0;
+}
+
+.offer-status {
+  font-weight: 600;
+}
+
+.offer-form {
+  margin-block: 1rem;
+}

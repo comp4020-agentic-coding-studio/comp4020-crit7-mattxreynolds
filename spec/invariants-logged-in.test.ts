@@ -2,7 +2,7 @@ import axe from "axe-core";
 import { JSDOM } from "jsdom";
 import { beforeAll, describe, expect, inject, it } from "vitest";
 import { CLASSES } from "../src/lib/classes";
-import { newStudent, ownPostId, submitPost, withdrawPost } from "./helpers";
+import { newStudent, ownPostId, submitOffer, submitPost, withdrawPost } from "./helpers";
 
 // spec/invariants.test.ts (a permanent, unedited check) fetches every route
 // in spec/routes.ts logged OUT — so "/" there checks the login page, by
@@ -15,7 +15,16 @@ import { newStudent, ownPostId, submitPost, withdrawPost } from "./helpers";
 // post, 0020) are fetched as that post's poster.
 const baseUrl = inject("baseUrl");
 
-async function ownedPosts(): Promise<{ open: number; withdrawn: number; openOwner: string; withdrawnOwner: string }> {
+async function ownedPosts(): Promise<{
+  open: number;
+  withdrawn: number;
+  openOwner: string;
+  withdrawnOwner: string;
+  offered: number;
+  offeredOwner: string;
+  offerer: string;
+  closedOfferer: string;
+}> {
   const fields = { leaving: CLASSES[0].id, join: [CLASSES[2].id], message: "Route coverage." };
   const openOwner = await newStudent("invopen");
   expect((await submitPost(openOwner, fields)).status).toBe(303);
@@ -24,8 +33,19 @@ async function ownedPosts(): Promise<{ open: number; withdrawn: number; openOwne
   const withdrawn = await ownPostId(withdrawnOwner);
   const open = await ownPostId(openOwner);
   if (open === null || withdrawn === null) throw new Error("could not set up the posts");
+  // the post page's other views (0023): a post with a pending offer (which
+  // locks its edit page, so it isn't the open post above), its offerer, and an
+  // offerer whose offer was closed when the withdrawn post was withdrawn
+  const offeredOwner = await newStudent("invofrd");
+  expect((await submitPost(offeredOwner, fields)).status).toBe(303);
+  const offered = await ownPostId(offeredOwner);
+  if (offered === null) throw new Error("could not set up the offered post");
+  const offerer = await newStudent("invoffer");
+  expect((await submitOffer(offerer, offered, { class: CLASSES[2].id })).status).toBe(303);
+  const closedOfferer = await newStudent("invclosed");
+  expect((await submitOffer(closedOfferer, withdrawn, { class: CLASSES[2].id })).status).toBe(303);
   expect((await withdrawPost(withdrawnOwner, withdrawn, "/")).status).toBe(303);
-  return { open, withdrawn, openOwner, withdrawnOwner };
+  return { open, withdrawn, openOwner, withdrawnOwner, offered, offeredOwner, offerer, closedOfferer };
 }
 
 const owned = await ownedPosts();
@@ -37,6 +57,9 @@ const LOGGED_IN_ROUTES: [string, string | null][] = [
   [`/posts/${owned.open}/`, owned.openOwner],
   [`/posts/${owned.open}/edit/`, owned.openOwner],
   [`/posts/${owned.withdrawn}/`, owned.withdrawnOwner],
+  [`/posts/${owned.offered}/`, owned.offeredOwner],
+  [`/posts/${owned.offered}/`, owned.offerer],
+  [`/posts/${owned.withdrawn}/`, owned.closedOfferer],
 ];
 
 async function signUpAndGetCookie(username: string, password: string): Promise<string> {

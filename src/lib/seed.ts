@@ -2,11 +2,11 @@ import { inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { CLASSES, type ClassId } from "./classes";
 import { hashPassword } from "./password";
-import { classes, students, swapPostJoinClasses, swapPosts } from "./schema";
+import { classes, offers, students, swapPostJoinClasses, swapPosts } from "./schema";
 
 // The demo students (0014, 0037): first-name usernames sharing one published
-// password, and the posts written for them (0038). Later slices add the
-// offers, comments and private messages beside these rows.
+// password, and the posts and pending offers written for them (0038). Later
+// slices add the swapped post, comments and private messages beside these rows.
 export const DEMO_USERNAMES = ["alex", "priya", "sam", "lena", "jordan", "mei", "noah"] as const;
 export const DEMO_PASSWORD = "demo-student";
 
@@ -31,6 +31,15 @@ const DEMO_POSTS: { username: string; leaving: ClassId; joins: ClassId[]; messag
   { username: "alex", leaving: "shitao", joins: ["baishi", "dachi"], message: "Clashes with my lab.", hoursAgo: 68 },
   { username: "priya", leaving: "baishi", joins: ["shitao", "bada"], hoursAgo: 40 },
   { username: "lena", leaving: "bada", joins: ["yunlin", "liuru"], hoursAgo: 5 },
+];
+
+// The pending offers (0038), each after the post it is on. An offered class is
+// the offerer's own leaving class where they have a post (priya's is Wed 09:00,
+// lena's Mon 15:30), so the seed never contradicts itself; sam has no post.
+const DEMO_OFFERS: { offerer: string; poster: string; offered: ClassId; hoursAgo: number }[] = [
+  { offerer: "priya", poster: "alex", offered: "baishi", hoursAgo: 60 },
+  { offerer: "sam", poster: "alex", offered: "dachi", hoursAgo: 30 },
+  { offerer: "lena", poster: "priya", offered: "bada", hoursAgo: 20 },
 ];
 
 // Written only when no demo student exists (0040): a fresh volume or a fresh
@@ -60,6 +69,7 @@ export function seedDemoStudents(db: BetterSQLite3Database): void {
       if (row) ids.set(username, row.id);
     }
 
+    const postIds = new Map<string, number>();
     for (const post of DEMO_POSTS) {
       const studentId = ids.get(post.username);
       if (studentId === undefined) continue;
@@ -75,6 +85,16 @@ export function seedDemoStudents(db: BetterSQLite3Database): void {
         .get();
       tx.insert(swapPostJoinClasses)
         .values(post.joins.map((classId) => ({ postId: id, classId })))
+        .run();
+      postIds.set(post.username, id);
+    }
+
+    for (const offer of DEMO_OFFERS) {
+      const offererId = ids.get(offer.offerer);
+      const postId = postIds.get(offer.poster);
+      if (offererId === undefined || postId === undefined) continue;
+      tx.insert(offers)
+        .values({ postId, offererId, offeredClassId: offer.offered, createdAt: new Date(now - offer.hoursAgo * HOUR) })
         .run();
     }
   });

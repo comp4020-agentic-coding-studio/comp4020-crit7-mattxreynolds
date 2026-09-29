@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { CLASSES } from "../src/lib/classes";
-import { baseUrl, newStudent, ownPostId, submitEdit, submitPost, usernameOf, withdrawPost } from "./helpers";
+import {
+  baseUrl,
+  newStudent,
+  ownOfferId,
+  ownPostId,
+  submitEdit,
+  submitOffer,
+  submitPost,
+  usernameOf,
+  withdrawOffer,
+  withdrawPost,
+} from "./helpers";
 
 // "post N changed" on the public stream (issue #18, decision 0043): the post
 // id and a kind, and nothing a logged-out reader must not see. Other spec
@@ -90,6 +101,54 @@ describe("/api/events", () => {
 
       const lower = raw.toLowerCase();
       for (const secret of [username, before, after]) expect(lower).not.toContain(secret.toLowerCase());
+      for (const c of CLASSES) {
+        for (const word of [c.id, c.start, c.end, c.tutor]) expect(lower).not.toContain(word.toLowerCase());
+      }
+    } finally {
+      controller.abort();
+    }
+  });
+
+  it("broadcasts post N changed once per affected post as offers are made, withdrawn and closed, with no content", async () => {
+    const poster = await newStudent("eventer");
+    const offererA = await newStudent("offevta");
+    const offererB = await newStudent("offevtb");
+    const names = [await usernameOf(poster), await usernameOf(offererA), await usernameOf(offererB)];
+    const message = "distinctive-offer-post-text-13579";
+    expect((await submitPost(poster, { leaving: CLASSES[0].id, join: [CLASSES[2].id, CLASSES[3].id], message })).status).toBe(303);
+    const id = await ownPostId(poster);
+    expect(id).not.toBeNull();
+
+    const controller = new AbortController();
+    const res = await fetch(new URL("/api/events", baseUrl), { signal: controller.signal });
+    const stream = (res.body as ReadableStream<Uint8Array>).getReader();
+    try {
+      await readUntil(stream, (seen) => seen.includes(": connected"));
+      // refused offers change nothing and send nothing
+      expect((await submitOffer(poster, id as number, { class: CLASSES[2].id })).status).toBe(403);
+      expect((await submitOffer(offererA, id as number, { class: CLASSES[0].id })).status).toBe(400);
+
+      expect((await submitOffer(offererA, id as number, { class: CLASSES[2].id })).status).toBe(303);
+      const aOffer = await ownOfferId(offererA, id as number);
+      expect((await withdrawOffer(offererA, aOffer as number, "/")).status).toBe(303);
+      expect((await submitOffer(offererB, id as number, { class: CLASSES[3].id })).status).toBe(303);
+      // withdrawing the post closes B's pending offer: still one event for the post
+      expect((await withdrawPost(poster, id as number, "/")).status).toBe(303);
+
+      const raw = await readUntil(stream, (seen) => seen.includes('"kind":"withdrawn"') && seen.includes(`"postId":${id},`));
+      const events = raw
+        .split("\n")
+        .filter((l) => l.startsWith("data: ") && l.includes(`"postId":${id},`))
+        .map((l) => JSON.parse(l.slice(6)));
+      expect(events).toEqual([
+        { type: "post-changed", postId: id, kind: "offer-made" },
+        { type: "post-changed", postId: id, kind: "offer-withdrawn" },
+        { type: "post-changed", postId: id, kind: "offer-made" },
+        { type: "post-changed", postId: id, kind: "withdrawn" },
+      ]);
+
+      const lower = raw.toLowerCase();
+      for (const secret of [...names, message]) expect(lower).not.toContain(secret.toLowerCase());
       for (const c of CLASSES) {
         for (const word of [c.id, c.start, c.end, c.tutor]) expect(lower).not.toContain(word.toLowerCase());
       }

@@ -1,5 +1,7 @@
 ---
 import { RANDOM_DEMO } from "../lib/auth";
+import { demoOfferCounts } from "../lib/offer-store";
+import { offersToAnswerLabel, countLabel } from "../lib/offers";
 import { usernamesWithOpenPost } from "../lib/posts";
 import { DEMO_USERNAMES } from "../lib/seed";
 
@@ -11,8 +13,18 @@ interface Props {
 const { next, error } = Astro.props;
 const demoChoices = [...DEMO_USERNAMES, RANDOM_DEMO];
 // each demo student's live line (0039): counts and yes/no only, never what a
-// post says. This slice's part is whether they have an open post.
+// post or an offer says. Its parts so far: offers waiting on their open post,
+// or just that they have one; offers they have made; and "no post yet" when
+// there is nothing else to say.
 const withPost = usernamesWithOpenPost(DEMO_USERNAMES);
+const offerCounts = demoOfferCounts(DEMO_USERNAMES);
+function demoLine(name: string): string {
+  const { toAnswer = 0, made = 0 } = offerCounts.get(name) ?? {};
+  const parts: string[] = [];
+  if (withPost.has(name)) parts.push(toAnswer > 0 ? offersToAnswerLabel(toAnswer) : "open post");
+  if (made > 0) parts.push(countLabel(made));
+  return parts.length > 0 ? parts.join(" · ") : "no post yet";
+}
 ---
 
 <h1>Log in</h1>
@@ -40,7 +52,7 @@ const withPost = usernamesWithOpenPost(DEMO_USERNAMES);
         </form>
         {choice !== RANDOM_DEMO && (
           <span class="demo-line">
-            {choice}: {withPost.has(choice) ? "open post" : "no post yet"}
+            {choice}: {demoLine(choice)}
           </span>
         )}
       </li>
