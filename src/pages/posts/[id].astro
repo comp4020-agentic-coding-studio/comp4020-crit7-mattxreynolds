@@ -1,17 +1,34 @@
 ---
+import OwnOffer from "../../components/OwnOffer.astro";
 import PostControls from "../../components/PostControls.astro";
 import Layout from "../../layouts/Layout.astro";
 import { classLabel } from "../../lib/classes";
+import { declinedOfferOn, ownOfferOn, pendingOffersOn } from "../../lib/offer-store";
+import { countLabel } from "../../lib/offers";
 import { getPost } from "../../lib/posts";
 import { formatCanberra } from "../../lib/time";
 
 // The post page (0020): the whole post, edited marker included (0018). A
 // withdrawn post still loads, says so with the time and has no controls. An id
-// that never existed is a 404.
+// that never existed is a 404. An open post renders three ways (0023): the
+// poster sees each pending offer and who made it, an offerer sees their own
+// offer and its status, and anyone else sees only the pending-offer count.
 const student = Astro.locals.student;
 const id = /^[0-9]+$/.test(Astro.params.id ?? "") ? Number(Astro.params.id) : null;
 const post = id === null ? null : getPost(id);
 if (!post) Astro.response.status = 404;
+
+const isPoster = post !== null && post.studentId === student?.id;
+const pageUrl = post ? `/posts/${post.id}/` : "/";
+const pendingOffers = post && isPoster ? pendingOffersOn(post.id) : [];
+const ownOffer = post && student && !isPoster ? ownOfferOn(student.id, post.id) : null;
+const canOffer =
+  post !== null &&
+  post.status === "open" &&
+  student !== null &&
+  !isPoster &&
+  ownOffer?.status !== "pending" &&
+  !declinedOfferOn(student.id, post.id);
 ---
 
 <Layout title={post ? `Swap post by ${post.username}` : "Swap post not found"} student={student}>
@@ -51,7 +68,47 @@ if (!post) Astro.response.status = 404;
             )
           }
         </dl>
-        {post.status === "open" && post.studentId === student?.id && <PostControls postId={post.id} next={`/posts/${post.id}/`} />}
+        {post.status === "open" && <p class="offer-count">{countLabel(post.pendingOffers)}</p>}
+        {
+          pendingOffers.length > 0 && (
+            <section aria-labelledby="offers">
+              <h2 id="offers">Offers</h2>
+              <ul class="offers">
+                {pendingOffers.map((offer) => (
+                  <li>
+                    <strong>{offer.offerer}</strong> would leave <span class="class">{classLabel(offer.offered)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+        {
+          ownOffer && (
+            <section aria-labelledby="your-offer">
+              <h2 id="your-offer">Your offer</h2>
+              <OwnOffer offer={ownOffer} next={pageUrl} />
+            </section>
+          )
+        }
+        {
+          canOffer && (
+            <form method="post" action={`/posts/${post.id}/offers`} class="offer-form">
+              <input type="hidden" name="next" value={pageUrl} />
+              <fieldset>
+                <legend>The class you hold and would leave</legend>
+                {post.joins.map((c) => (
+                  <label class="choice">
+                    <input type="radio" name="class" value={c.id} checked={post.joins.length === 1} required />
+                    {classLabel(c)}
+                  </label>
+                ))}
+              </fieldset>
+              <button>Offer to swap</button>
+            </form>
+          )
+        }
+        {isPoster && post.status === "open" && <PostControls postId={post.id} next={pageUrl} />}
         <p>
           <a href="/">Back to the board</a>
         </p>

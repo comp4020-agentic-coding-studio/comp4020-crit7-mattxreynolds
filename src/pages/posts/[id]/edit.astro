@@ -2,7 +2,7 @@
 import PostForm from "../../../components/PostForm.astro";
 import Layout from "../../../layouts/Layout.astro";
 import { setFlash } from "../../../lib/flash";
-import { allClasses, editPost, getPost } from "../../../lib/posts";
+import { LOCKED, allClasses, editPost, getPost } from "../../../lib/posts";
 
 // Editing a swap post (0018). Like the new-post page this takes its own POST:
 // a refused edit is this page again with the reason and what was typed, and a
@@ -30,6 +30,9 @@ if (!post) {
 } else if (post.status !== "open") {
   Astro.response.status = 409;
   blocked = "This swap post was withdrawn.";
+} else if (post.pendingOffers > 0) {
+  Astro.response.status = 409;
+  blocked = LOCKED;
 } else if (Astro.request.method === "POST") {
   const form = await Astro.request.formData();
   leaving = String(form.get("leaving") ?? "");
@@ -42,7 +45,8 @@ if (!post) {
     return Astro.redirect("/", 303);
   }
   error = result.error;
-  Astro.response.status = result.reason === "invalid" ? 400 : result.reason === "not-open" ? 409 : result.reason === "forbidden" ? 403 : 404;
+  Astro.response.status =
+    result.reason === "invalid" ? 400 : result.reason === "not-open" || result.reason === "locked" ? 409 : result.reason === "forbidden" ? 403 : 404;
   if (result.reason !== "invalid") blocked = result.error;
 }
 ---

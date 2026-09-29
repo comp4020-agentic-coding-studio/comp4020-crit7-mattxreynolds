@@ -1,0 +1,31 @@
+---
+import { classLabel } from "../lib/classes";
+import { offerLabel } from "../lib/offers";
+import type { OwnOffer } from "../lib/offer-store";
+
+interface Props {
+  offer: OwnOffer;
+  // the page this sits on: Withdraw returns there (0045)
+  next: string;
+  // on the post page the post is the page itself, so no link to it
+  link?: boolean;
+}
+
+// One of a student's own offers with its status (0023, 0025), on the post it
+// is about and in "Your offers" on the board. A pending one can be withdrawn.
+const { offer, next, link = false } = Astro.props;
+---
+
+<div class="own-offer">
+  {link && <a href={`/posts/${offer.postId}/`}>{offer.poster}'s post</a>}
+  <span>{link ? " · " : ""}You would leave <span class="class">{classLabel(offer.offered)}</span></span>
+  <span class="offer-status">{offerLabel(offer)}</span>
+  {
+    offer.status === "pending" && (
+      <form method="post" action={`/offers/${offer.id}/withdraw`}>
+        <input type="hidden" name="next" value={next} />
+        <button>Withdraw</button>
+      </form>
+    )
+  }
+</div>

@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { publishPostChanged } from "./events";
+import { closePendingOffers, hasPendingOffers, pendingOfferCounts } from "./offer-store";
 import { type SchoolClass, classes, students, swapPostJoinClasses, swapPosts } from "./schema";
 
 export const MESSAGE_MAX = 500;
@@ -18,6 +19,8 @@ export interface PostView {
   postedAt: Date;
   editedAt: Date | null;
   withdrawnAt: Date | null;
+  // offers still waiting for the poster (0023): the one count everyone sees
+  pendingOffers: number;
 }
 
 export interface NewPost {
@@ -32,7 +35,7 @@ export type CreatePostResult =
 
 export type EditPostResult =
   | { ok: true }
-  | { ok: false; reason: "not-found" | "forbidden" | "not-open" | "invalid"; error: string };
+  | { ok: false; reason: "not-found" | "forbidden" | "not-open" | "locked" | "invalid"; error: string };
 
 export type WithdrawPostResult = { ok: true } | { ok: false; reason: "not-found" | "forbidden" | "not-open"; error: string };
 
@@ -125,6 +128,7 @@ export function createPost(studentId: number, input: NewPost): CreatePostResult 
 const NOT_FOUND = "There is no swap post with that number.";
 const NOT_YOURS = "Only the poster can change this swap post.";
 const WITHDRAWN = "This swap post was withdrawn.";
+export const LOCKED = "This swap post has pending offers, so it can't be edited. Withdraw it to change your mind.";
 
 // The post as a change to it needs to see it: who owns it and whether it is
 // still open. Whoever isn't the poster is refused first, so a stranger learns
@@ -137,11 +141,13 @@ function changeable(studentId: number, postId: number): { ok: true } | { ok: fal
   return { ok: true };
 }
 
-// Editing (0018): the poster changes an open post, under the same rules as a
-// new one. (Locking it while offers are pending arrives with offers.)
+// Editing (0018): the poster changes an open post under the same rules as a
+// new one, while no offer on it is pending; a withdrawn offer no longer locks
+// it.
 export function editPost(studentId: number, postId: number, input: NewPost): EditPostResult {
   const allowed = changeable(studentId, postId);
   if (!allowed.ok) return allowed;
+  if (hasPendingOffers(postId)) return { ok: false, reason: "locked", error: LOCKED };
   const checked = checkInput(input);
   if (!checked.ok) return { ok: false, reason: "invalid", error: checked.error };
 
@@ -184,27 +190,34 @@ export function editPost(studentId: number, postId: number, input: NewPost): Edi
 }
 
 // Withdrawing (0018): the poster takes an open post down at any time. It
-// leaves the board and they can post again; its page still loads (0020).
+// leaves the board and they can post again; its page still loads (0020). Its
+// pending offers are closed with it (0025).
 export function withdrawPost(studentId: number, postId: number): WithdrawPostResult {
   const allowed = changeable(studentId, postId);
   if (!allowed.ok) return allowed;
 
-  const { changes } = db
-    .update(swapPosts)
-    .set({ status: "withdrawn", withdrawnAt: new Date(), withdrawnBy: studentId })
-    .where(and(eq(swapPosts.id, postId), eq(swapPosts.status, "open")))
-    .run();
-  if (changes === 0) return { ok: false, reason: "not-open", error: WITHDRAWN };
+  const withdrawn = db.transaction((tx) => {
+    const { changes } = tx
+      .update(swapPosts)
+      .set({ status: "withdrawn", withdrawnAt: new Date(), withdrawnBy: studentId })
+      .where(and(eq(swapPosts.id, postId), eq(swapPosts.status, "open")))
+      .run();
+    if (changes === 0) return false;
+    closePendingOffers(tx, postId, "post-withdrawn");
+    return true;
+  });
+  if (!withdrawn) return { ok: false, reason: "not-open", error: WITHDRAWN };
 
   publishPostChanged(postId, "withdrawn");
   return { ok: true };
 }
 
-type PostRow = Omit<PostView, "leaving" | "joins"> & { leavingClassId: string };
+type PostRow = Omit<PostView, "leaving" | "joins" | "pendingOffers"> & { leavingClassId: string };
 
 function toViews(rows: PostRow[]): PostView[] {
   if (rows.length === 0) return [];
   const classById = new Map(allClasses().map((c) => [c.id, c]));
+  const pending = pendingOfferCounts(rows.map((r) => r.id));
   const joinRows = db
     .select()
     .from(swapPostJoinClasses)
@@ -218,7 +231,7 @@ function toViews(rows: PostRow[]): PostView[] {
       .sort((a, b) => a.position - b.position);
     const leaving = classById.get(row.leavingClassId);
     if (!leaving) throw new Error(`post ${row.id} names an unknown class`);
-    return { ...row, leaving, joins };
+    return { ...row, leaving, joins, pendingOffers: pending.get(row.id) ?? 0 };
   });
 }
 

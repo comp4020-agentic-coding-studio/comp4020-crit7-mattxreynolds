@@ -104,3 +104,41 @@ export function withdrawPost(cookie: string, id: number | string, next?: string,
     redirect: "manual",
   });
 }
+
+/** Press "Offer to swap" on post `id`, as the form does: the offered class and the page it sits on. */
+export function submitOffer(
+  cookie: string | null,
+  id: number | string,
+  fields: { class?: string; next?: string } = {},
+  origin = baseUrl,
+): Promise<Response> {
+  const body = new URLSearchParams();
+  if (fields.class !== undefined) body.set("class", fields.class);
+  if (fields.next !== undefined) body.set("next", fields.next);
+  return fetch(new URL(`/posts/${id}/offers`, origin), {
+    method: "POST",
+    headers: cookie ? { origin, cookie } : { origin },
+    body,
+    redirect: "manual",
+  });
+}
+
+/** Press Withdraw on offer `id`: `next` is the page it sits on. */
+export function withdrawOffer(cookie: string | null, id: number | string, next?: string, origin = baseUrl): Promise<Response> {
+  const body = new URLSearchParams();
+  if (next !== undefined) body.set("next", next);
+  return fetch(new URL(`/offers/${id}/withdraw`, origin), {
+    method: "POST",
+    headers: cookie ? { origin, cookie } : { origin },
+    body,
+    redirect: "manual",
+  });
+}
+
+/** The id of the student's pending offer on post `postId`, read from the Withdraw form on the post page. */
+export async function ownOfferId(cookie: string, postId: number | string, origin = baseUrl): Promise<number | null> {
+  const doc = await page(`/posts/${postId}/`, cookie, origin);
+  const action = doc.querySelector('form[action^="/offers/"]')?.getAttribute("action");
+  const id = action?.match(/^\/offers\/(\d+)\/withdraw$/)?.[1];
+  return id ? Number(id) : null;
+}
