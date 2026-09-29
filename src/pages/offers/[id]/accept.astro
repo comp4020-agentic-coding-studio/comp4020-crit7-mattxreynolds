@@ -47,6 +47,7 @@ if (!view) {
 ---
 
 <Layout title="Accept this offer?" student={student}>
+  <div class="form-page">
   <h1>Accept this offer?</h1>
   {error && !blocked && <p role="alert" data-attention>{error}</p>}
   {
@@ -61,8 +62,8 @@ if (!view) {
         )}
       </p>
     ) : (
-      <>
-        <p>
+      <section class="form-card accept-card">
+        <p class="swap-summary">
           <strong>{view.offerer}</strong> would leave <span class="class">{classLabel(view.offered)}</span> and take your
           place in <span class="class">{classLabel(view.leaving)}</span>. You would move to{" "}
           <span class="class">{classLabel(view.offered)}</span>.
@@ -78,8 +79,9 @@ if (!view) {
           <button class="button primary">Accept the swap</button>
           <a href={`/posts/${view.postId}/`}>Cancel</a>
         </form>
-      </>
+      </section>
     )
   }
-  <p><a href="/">Back to the board</a></p>
+  <p class="back-link"><a href="/">Back to the board</a></p>
+  </div>
 </Layout>

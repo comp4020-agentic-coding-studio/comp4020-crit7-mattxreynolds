@@ -17,7 +17,7 @@ interface Props {
 const { action, classes, leaving, joins, message, submitLabel } = Astro.props;
 ---
 
-<form method="post" action={action} id="post-form">
+<form method="post" action={action} id="post-form" class="form-card">
   <fieldset>
     <legend>Class you are leaving</legend>
     {
@@ -42,7 +42,9 @@ const { action, classes, leaving, joins, message, submitLabel } = Astro.props;
   </fieldset>
   <label for="message">Message (optional, up to {MESSAGE_MAX} characters)</label>
   <textarea id="message" name="message" rows="4" maxlength={MESSAGE_MAX}>{message}</textarea>
-  <button class="button primary">{submitLabel}</button>
+  <div class="form-actions">
+    <button class="button primary">{submitLabel}</button>
+  </div>
 </form>
 
 <script>

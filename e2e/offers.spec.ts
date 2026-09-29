@@ -144,6 +144,7 @@ test.describe("accepting and declining", () => {
     await page.locator(".offers li", { hasText: accepted }).getByRole("link", { name: "Accept", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Accept this offer?" })).toBeVisible();
     await expect(page.getByText("Accepting is final")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "the accept step scrolls sideways").toBe(true);
     await page.screenshot({ path: screenshotPath(testInfo, "accept-confirm"), fullPage: true });
     await page.getByRole("button", { name: "Accept the swap" }).click();
     await expect(page).toHaveURL(postUrl);

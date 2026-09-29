@@ -177,3 +177,44 @@ test("the board is a split on a wide screen and stacks on a phone", async ({ pag
 
   await page.screenshot({ path: screenshotPath(testInfo, "board-split"), fullPage: true });
 });
+
+// Issue #39 (0055): new post, edit post and About are part of the board. The
+// form is one card in a reading column; its choices are a grid of rows that
+// wrap to one column on a phone; nothing scrolls sideways at either size. The
+// screenshots are the ones Matt judges: "the forms and About look like part of
+// the transit board".
+test("new post, edit post and About fit the board's look at both sizes", async ({ page }, testInfo) => {
+  const username = `forms${testInfo.project.name[0]}${Date.now() % 100000}`;
+  const fits = () =>
+    page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+
+  await page.goto("/signup/");
+  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Password").fill("e2e-password-1");
+  await page.getByRole("button", { name: "Sign up" }).click();
+  await expect(page).toHaveURL("/");
+
+  await page.goto("/posts/new/");
+  const { column, card, actions } = await boxes(page, { column: ".form-page", card: "#post-form", actions: ".form-actions" });
+  expect(card.width, "the card fills the column").toBeGreaterThan(column.width - 2);
+  expect(actions.y, "the button sits inside the card").toBeLessThan(card.y + card.height);
+  if (testInfo.project.name === "desktop") expect(column.width, "a reading column, not the page").toBeLessThanOrEqual(641);
+  expect(await fits(), "new post scrolls sideways").toBe(true);
+  await page.screenshot({ path: screenshotPath(testInfo, "post-form"), fullPage: true });
+
+  await page.getByRole("radio", { name: "Mon 14:00–15:30" }).check();
+  await page.getByRole("group", { name: "Classes you would join" }).getByRole("checkbox", { name: "Wed 09:00–10:30" }).check();
+  await page.getByRole("button", { name: "Post swap" }).click();
+  await expect(page).toHaveURL("/");
+
+  await page.locator("#your-post ~ .post").getByRole("link", { name: "Edit" }).click();
+  await expect(page.getByRole("heading", { name: "Edit your swap post" })).toBeVisible();
+  await boxes(page, { card: ".form-page #post-form" });
+  expect(await fits(), "edit post scrolls sideways").toBe(true);
+
+  await page.goto("/readme/");
+  const { article } = await boxes(page, { article: ".readme-page" });
+  if (testInfo.project.name === "desktop") expect(article.width, "a reading column").toBeLessThanOrEqual(705);
+  expect(await fits(), "About scrolls sideways").toBe(true);
+  await page.screenshot({ path: screenshotPath(testInfo, "about"), fullPage: true });
+});

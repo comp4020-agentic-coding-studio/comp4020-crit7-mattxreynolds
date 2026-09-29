@@ -738,6 +738,138 @@ textarea {
   }
 }
 
+/* New post, edit post and the accept step (0055): one reading column, the
+   heading with login's cyan bar, the form or the question as a card with a
+   navy top. Errors keep the attention style from 0058; nothing here is coral
+   otherwise. */
+.form-page {
+  max-width: 40rem;
+}
+
+.form-page > h1 {
+  padding-inline-start: 0.75rem;
+  border-inline-start: 0.4rem solid var(--cyan);
+}
+
+.form-card {
+  padding: 1rem 1.25rem 1.25rem;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--navy);
+  border-radius: 0.25rem;
+  background: var(--card);
+}
+
+.form-card legend {
+  padding-inline: 0.4rem;
+  color: var(--navy);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.form-card fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
+  gap: 0.4rem 0.75rem;
+  min-width: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+
+.form-card fieldset legend {
+  grid-column: 1 / -1;
+}
+
+.form-card label.choice {
+  min-height: 2.5rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.form-card label.choice:hover {
+  background: var(--wash);
+}
+
+.form-card label.choice:has(input:checked) {
+  border-color: var(--navy);
+  border-inline-start: 0.4rem solid var(--cyan);
+  background: var(--wash);
+}
+
+.form-card label[for="message"] {
+  margin-top: 0.25rem;
+  color: var(--navy);
+}
+
+.form-card textarea {
+  min-width: 0;
+}
+
+.form-actions {
+  display: flex;
+  flex: 1 1 100%;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.accept-card > p {
+  margin-block: 0.5rem;
+}
+
+.accept-card .swap-summary {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+.accept-card .final {
+  margin-block: 0.75rem;
+}
+
+.accept-card form {
+  margin-block: 1rem 0;
+}
+
+/* About (0055): the whole README in a reading column, on a card. Only its
+   layout is styled: the text is the README's. Long links wrap and wide
+   blocks scroll inside the card, never the page. */
+.readme-page {
+  max-width: 44rem;
+  padding: 0.25rem 1.5rem 1rem;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--navy);
+  border-radius: 0.25rem;
+  background: var(--card);
+  overflow-wrap: anywhere;
+}
+
+.readme-page > h1 {
+  margin-top: 1rem;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 0.4rem solid var(--cyan);
+  color: var(--navy);
+}
+
+.readme-page h2 {
+  margin-block: 2rem 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--navy);
+}
+
+.readme-page img {
+  max-width: 100%;
+  height: auto;
+}
+
+.readme-page pre,
+.readme-page table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 /* The post page (0057): a header card opening with the enlarged exchange row,
    then a split like the board's, the actions beside the comments. #post-live is
    the region the live refresh swaps and .post-split the grid around it and the

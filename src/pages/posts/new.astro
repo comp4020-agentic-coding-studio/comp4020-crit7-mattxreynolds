@@ -35,6 +35,7 @@ if (Astro.request.method === "POST") {
 ---
 
 <Layout title="Post a swap" student={student}>
+  <div class="form-page">
   <h1>Post a swap</h1>
   {error && <p role="alert" data-attention>{error}</p>}
   {
@@ -46,6 +47,7 @@ if (Astro.request.method === "POST") {
       <PostForm action="/posts/new/" classes={classes} leaving={leaving} joins={joins} message={message} submitLabel="Post swap" />
     )
   }
-  <p><a href="/">Back to the board</a></p>
+  <p class="back-link"><a href="/">Back to the board</a></p>
+  </div>
 </Layout>
 

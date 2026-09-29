@@ -12,6 +12,6 @@ const html = (await readme.compiledContent()).replace(/(src|href)="public\//g, '
 ---
 
 <Layout title={title} student={Astro.locals.student}>
-  <div set:html={html} />
+  <article class="readme-page" set:html={html} />
 </Layout>
 
