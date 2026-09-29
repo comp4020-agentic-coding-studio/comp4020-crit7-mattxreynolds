@@ -15,12 +15,13 @@ interface Options {
 }
 
 // A stable name for a control across a swap: where it goes (or which form it
-// belongs to), what it is and what it says.
+// belongs to) and what it is. Not what it says: a count link's label is what
+// a refresh changes ("0 pending offers" → "1 pending offer").
 function controlKey(el: Element): string {
   const form = el instanceof HTMLElement && "form" in el ? (el as HTMLInputElement).form : null;
   const where = el.getAttribute("href") ?? form?.getAttribute("action") ?? "";
   const named = el.getAttribute("name") ?? "";
-  return [el.tagName, where, named, el.getAttribute("value") ?? "", el.textContent?.trim() ?? ""].join("|");
+  return [el.tagName, where, named, el.getAttribute("value") ?? ""].join("|");
 }
 
 function swapIn(container: HTMLElement, html: string): boolean {
@@ -47,7 +48,13 @@ function swapIn(container: HTMLElement, html: string): boolean {
     const same = [...container.querySelectorAll<HTMLElement>("a, button, input, select, textarea")].find(
       (el) => controlKey(el) === focusKey,
     );
-    same?.focus({ preventScroll: true });
+    // a control the refresh removed (Accept after a swap) hands focus to the
+    // container instead of dropping it to the top of the page
+    if (same) same.focus({ preventScroll: true });
+    else {
+      container.tabIndex = -1;
+      container.focus({ preventScroll: true });
+    }
   }
   window.scrollTo(scrollX, scrollY);
   return true;
@@ -66,7 +73,10 @@ export function startLive({ container, url, wants, announce }: Options): void {
     }
     inFlight = true;
     try {
-      const res = await fetch(url, { credentials: "same-origin", headers: { accept: "text/html" } });
+      const res = await fetch(url, { credentials: "same-origin", headers: { accept: "text/html" },
+        // a stalled request must not leave inFlight set and stop every later refresh
+        signal: AbortSignal.timeout(10_000),
+      });
       // a logged-out or missing answer is never swapped in
       if (!res.ok || res.redirected) return;
       if (swapIn(container, await res.text()) && announce?.region) {
@@ -88,13 +98,10 @@ export function startLive({ container, url, wants, announce }: Options): void {
   }
 
   const source = new EventSource("/api/events");
-  let opened = false;
-  source.addEventListener("open", () => {
-    // the first open is the page's own load; every later one is a reconnect,
-    // and events may have been missed while the stream was down
-    if (opened) void refetch();
-    opened = true;
-  });
+  // every open, the first included: a change between the server rendering
+  // this page and the stream connecting is missed like one while it was down.
+  // Identical HTML is not swapped, so a quiet open costs one request.
+  source.addEventListener("open", () => void refetch());
   source.addEventListener("message", (event) => {
     if (wants(event.data)) void refetch();
   });

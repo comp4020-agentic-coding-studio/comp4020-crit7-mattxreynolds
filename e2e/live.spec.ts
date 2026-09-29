@@ -133,18 +133,22 @@ test("the board refetches when its event stream reconnects", async ({ browser },
 
   const samContext = await newContext(browser, testInfo);
   const sam = await samContext.newPage();
-  // the first stream request is held while the change happens, then ends at
-  // once with a short retry: the change's event is never delivered, so only
-  // the reconnect can show it. Later requests reach the real server.
+  // the first stream ends at once with a short retry, and the reconnect is
+  // held while the change happens: its event is never delivered, so only the
+  // reconnect's refetch can show it. Later requests reach the real server.
   let release: () => Promise<void> = async () => {};
-  let first = true;
+  let requests = 0;
   await sam.route("**/api/events", async (route) => {
-    if (!first) return route.continue();
-    first = false;
-    release = () => route.fulfill({ status: 200, contentType: "text/event-stream", body: "retry: 100\n\n: connected\n\n" });
+    requests += 1;
+    if (requests === 1) {
+      return route.fulfill({ status: 200, contentType: "text/event-stream", body: "retry: 100\n\n: connected\n\n" });
+    }
+    if (requests > 2) return route.continue();
+    release = () => route.continue();
   });
   await signUp(sam, `sam${suffix}`);
   await expect(sam.locator("#open-posts ~ .post").filter({ hasText: alexName })).toBeVisible();
+  await expect.poll(() => requests).toBe(2);
   await sam.evaluate(() => {
     (window as unknown as { __noReload: boolean }).__noReload = true;
   });
@@ -156,6 +160,29 @@ test("the board refetches when its event stream reconnects", async ({ browser },
   await expect(sam.locator("#open-posts ~ .post").filter({ hasText: alexName })).toHaveCount(0);
   expect(await sam.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload)).toBe(true);
   await Promise.all([alexContext, priyaContext, samContext].map((c: BrowserContext) => c.close()));
+});
+
+test("focus stays on a control whose label the refresh changes", async ({ browser }, testInfo) => {
+  const suffix = `${testInfo.project.name[0]}${Date.now() % 100000}`;
+  const alexContext = await newContext(browser, testInfo);
+  const alex = await alexContext.newPage();
+  await signUp(alex, `alexf${suffix}`);
+  await postSwap(alex, "Mon 14:00–15:30", ["Wed 09:00–10:30"]);
+  const postPath = await ownPostPath(alex);
+  const count = alex.locator("#your-post ~ .post .offer-count").getByRole("link");
+  await expect(count).toHaveText("0 pending offers");
+  await count.focus();
+
+  const priyaContext = await newContext(browser, testInfo);
+  const priya = await priyaContext.newPage();
+  await signUp(priya, `priyaf${suffix}`);
+  await priya.goto(postPath);
+  await priya.getByRole("radio", { name: "Wed 09:00–10:30" }).check().catch(() => {});
+  await priya.getByRole("button", { name: "Offer to swap" }).click();
+
+  await expect(count).toHaveText("1 pending offer");
+  expect(await alex.evaluate(() => document.activeElement?.getAttribute("href"))).toBe(postPath);
+  await Promise.all([alexContext, priyaContext].map((c: BrowserContext) => c.close()));
 });
 
 test("the board and the post page are correct on reload with JavaScript off", async ({ browser }, testInfo) => {

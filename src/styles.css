@@ -257,3 +257,8 @@ textarea {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+#board-live:focus,
+#post-live:focus {
+  outline: none;
+}

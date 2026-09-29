@@ -35,7 +35,8 @@ async function pageInner(path: string, id: string, cookie: string): Promise<stri
  *  between the two fetches: try again until they were read at the same state. */
 async function fragmentAndPage(fragment: string, path: string, id: string, cookie: string) {
   let pair = { fragment: "", page: "" };
-  for (let attempt = 0; attempt < 8; attempt++) {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 100));
     const res = await get(fragment, cookie);
     expect(res.status).toBe(200);
     pair = { fragment: normalised(await res.text()), page: normalised(await pageInner(path, id, cookie)) };
