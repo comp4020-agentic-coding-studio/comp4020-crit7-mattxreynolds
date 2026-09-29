@@ -121,6 +121,10 @@ Fixed by #3 (`docs/decisions/0007`, `0008`) unless noted.
   time runs short: About, inbox, conversation, new/edit post and the accept
   step; then the post page; then login and signup. The board is never cut.
   Fixed by #29 (`0056`).
+- **Attention (coral)**: the colour for a state waiting on the viewer:
+  pending offers on their own post (at least one), unread private messages and
+  form errors. Nothing else is coral, and no status relies on colour alone.
+  Fixed by #32 (`docs/decisions/0058`).
 
 ## Harness
 
