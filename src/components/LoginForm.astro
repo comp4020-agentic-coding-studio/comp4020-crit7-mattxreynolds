@@ -31,35 +31,43 @@ function demoLine(name: string): string {
 }
 ---
 
-<h1>Log in</h1>
-{error && <p role="alert" data-attention>{error}</p>}
-<form method="post" action="/api/login">
-  <input type="hidden" name="next" value={next} />
-  <label for="username">Username</label>
-  <input id="username" name="username" required autocomplete="username" />
-  <label for="password">Password</label>
-  <input id="password" name="password" type="password" required autocomplete="current-password" />
-  <button class="button primary">Log in</button>
-</form>
-<p><a href={`/signup/?next=${encodeURIComponent(next)}`}>Sign up instead</a></p>
+<div class="auth-page">
+  <h1>Log in</h1>
+  <p class="tagline">Post the class you're leaving, see who'd swap, and agree it together.</p>
+  <section class="auth-card">
+    <h2>Username and password</h2>
+    {error && <p role="alert" data-attention>{error}</p>}
+    <form method="post" action="/api/login">
+      <input type="hidden" name="next" value={next} />
+      <label for="username">Username</label>
+      <input id="username" name="username" required autocomplete="username" />
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required autocomplete="current-password" />
+      <button class="button primary">Log in</button>
+    </form>
+    <p><a href={`/signup/?next=${encodeURIComponent(next)}`}>Sign up instead</a></p>
+  </section>
 
-<h2>Demo students</h2>
-<p>One click, no typing. Demo students are shared: anyone can be one.</p>
-<ul class="demo-students">
-  {
-    demoChoices.map((choice) => (
-      <li>
-        <form method="post" action="/login/demo">
-          <input type="hidden" name="next" value={next} />
-          <input type="hidden" name="username" value={choice} />
-          <button class="button secondary">{choice === RANDOM_DEMO ? "Random demo student" : choice}</button>
-        </form>
-        {choice !== RANDOM_DEMO && (
-          <span class="demo-line">
-            {choice}: {demoLine(choice)}
-          </span>
-        )}
-      </li>
-    ))
-  }
-</ul>
+  <section class="auth-card">
+    <h2>Demo students</h2>
+    <p>One click, no typing. Demo students are shared: anyone can be one.</p>
+    <ul class="demo-students">
+      {
+        demoChoices.map((choice) => (
+          <li>
+            <form method="post" action="/login/demo">
+              <input type="hidden" name="next" value={next} />
+              <input type="hidden" name="username" value={choice} />
+              <button class="button secondary">{choice === RANDOM_DEMO ? "Random demo student" : choice}</button>
+            </form>
+            {choice !== RANDOM_DEMO && (
+              <span class="demo-line">
+                {choice}: {demoLine(choice)}
+              </span>
+            )}
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</div>

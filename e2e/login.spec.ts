@@ -43,3 +43,35 @@ test("log in with one click as a demo student", async ({ page }, testInfo) => {
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("heading", { name: "Board" })).toBeVisible();
 });
+
+// Issue #36: login's two cards sit side by side on a wide screen and stack on
+// a phone, and signup's one card is the same width as login's first card. The
+// screenshots are the ones Matt judges: "Signup looks like login".
+test("login and signup share one card, and the demo students sit beside or under it", async ({ page }, testInfo) => {
+  const wide = (page.viewportSize()?.width ?? 0) >= 768;
+  const box = async (locator: ReturnType<typeof page.locator>) => {
+    const b = await locator.boundingBox();
+    if (!b) throw new Error("not laid out");
+    return b;
+  };
+
+  await page.goto("/login/");
+  const [formCard, demoCard] = [page.locator(".auth-card").nth(0), page.locator(".auth-card").nth(1)];
+  const [form, demo] = [await box(formCard), await box(demoCard)];
+  if (wide) {
+    expect(demo.x, "demo students beside the form").toBeGreaterThan(form.x + form.width - 1);
+    expect(Math.abs(demo.y - form.y), "cards start level").toBeLessThan(2);
+  } else {
+    expect(demo.y, "demo students under the form").toBeGreaterThan(form.y + form.height - 1);
+    expect(Math.abs(demo.x - form.x), "cards line up").toBeLessThan(2);
+  }
+  const tagline = await box(page.locator(".tagline"));
+  expect(tagline.y, "the line sits above the cards").toBeLessThan(form.y);
+
+  await page.goto("/signup/");
+  await expect(page.locator(".demo-students")).toHaveCount(0);
+  const card = await box(page.locator(".auth-card"));
+  expect(Math.abs(card.width - form.width), "signup's card is login's card").toBeLessThan(2);
+  expect(Math.abs(card.x - form.x), "and starts at the same edge").toBeLessThan(2);
+  await page.screenshot({ path: screenshotPath(testInfo, "signup"), fullPage: true });
+});

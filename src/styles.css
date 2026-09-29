@@ -607,3 +607,73 @@ textarea {
 .offer-count[data-attention] a {
   color: inherit;
 }
+
+/* Login and signup (0053, 0055): one heading style and one card, so signup is
+   login without the demo students. The h1 and the tagline span the page; the
+   cards sit in a first column of one width, the demo students beside the form
+   from 48rem up and under it below. */
+.auth-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem 2rem;
+}
+
+.auth-page > h1 {
+  padding-inline-start: 0.75rem;
+  border-inline-start: 0.4rem solid var(--cyan);
+  margin-block: 0;
+  color: var(--navy);
+}
+
+.tagline {
+  margin-block: 0;
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+
+.auth-card {
+  min-width: 0;
+  padding: 1rem 1.25rem 1.25rem;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--navy);
+  border-radius: 0.25rem;
+  background: var(--card);
+}
+
+.auth-card h2 {
+  margin-block: 0 0.75rem;
+  color: var(--navy);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.auth-card > p {
+  margin-block: 0.5rem;
+}
+
+.auth-card form {
+  margin-block: 0.75rem;
+}
+
+.auth-card input {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.auth-card .demo-students form {
+  margin: 0;
+}
+
+@media (min-width: 48rem) {
+  .auth-page {
+    grid-template-columns: minmax(0, 26rem) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .auth-page > h1,
+  .auth-page > .tagline {
+    grid-column: 1 / -1;
+  }
+}

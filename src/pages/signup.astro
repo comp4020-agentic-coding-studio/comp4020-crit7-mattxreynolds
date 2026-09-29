@@ -14,32 +14,37 @@ const username = Astro.url.searchParams.get("username") ?? "";
 ---
 
 <Layout title="Sign up" student={null}>
-  <h1>Sign up</h1>
-  <p>{DEMO_LOGIN_NOTICE}</p>
-  {error && <p role="alert" data-attention>{error}</p>}
-  <form method="post" action="/api/signup">
-    <input type="hidden" name="next" value={next} />
-    <label for="username">Username</label>
-    <input
-      id="username"
-      name="username"
-      required
-      minlength="3"
-      maxlength="20"
-      pattern="[A-Za-z0-9_-]+"
-      value={username}
-      autocomplete="username"
-    />
-    <label for="password">Password</label>
-    <input
-      id="password"
-      name="password"
-      type="password"
-      required
-      minlength="8"
-      autocomplete="new-password"
-    />
-    <button class="button primary">Sign up</button>
-  </form>
-  <p><a href={`/login/?next=${encodeURIComponent(next)}`}>Log in instead</a></p>
+  <div class="auth-page">
+    <h1>Sign up</h1>
+    <section class="auth-card">
+      <h2>Choose a username and password</h2>
+      <p>{DEMO_LOGIN_NOTICE}</p>
+      {error && <p role="alert" data-attention>{error}</p>}
+      <form method="post" action="/api/signup">
+        <input type="hidden" name="next" value={next} />
+        <label for="username">Username</label>
+        <input
+          id="username"
+          name="username"
+          required
+          minlength="3"
+          maxlength="20"
+          pattern="[A-Za-z0-9_-]+"
+          value={username}
+          autocomplete="username"
+        />
+        <label for="password">Password</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          required
+          minlength="8"
+          autocomplete="new-password"
+        />
+        <button class="button primary">Sign up</button>
+      </form>
+      <p><a href={`/login/?next=${encodeURIComponent(next)}`}>Log in instead</a></p>
+    </section>
+  </div>
 </Layout>
